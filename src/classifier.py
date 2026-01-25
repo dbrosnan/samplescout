@@ -5,6 +5,7 @@ Classifies audio into 521 sound categories using Google's YAMNet model.
 """
 
 import csv
+import time
 from dataclasses import dataclass
 from pathlib import Path
 from typing import List, Optional, Tuple
@@ -22,9 +23,11 @@ class ClassificationResult:
 
     scores: np.ndarray  # Shape: (num_frames, 521)
     embeddings: np.ndarray  # Shape: (num_frames, 1024)
-    spectrogram: np.ndarray  # Log mel spectrogram
     top_classes: List[Tuple[str, float]]  # Top class names and scores
-    all_classes: List[str]  # All 521 class names
+    embedding: np.ndarray  # Mean embedding (1024,)
+    processing_time: float = 0.0  # Time taken for classification
+    spectrogram: Optional[np.ndarray] = None  # Log mel spectrogram
+    all_classes: Optional[List[str]] = None  # All 521 class names
 
     @property
     def top_sounds(self) -> List[str]:
@@ -109,6 +112,8 @@ class YAMNetClassifier:
         Returns:
             ClassificationResult with scores, embeddings, and top classes
         """
+        start_time = time.time()
+
         # Load and preprocess audio
         waveform = self._load_audio(audio_path)
 
@@ -123,6 +128,9 @@ class YAMNetClassifier:
         # Get mean scores across all frames
         mean_scores = np.mean(scores_np, axis=0)
 
+        # Get mean embedding (for similarity search)
+        mean_embedding = np.mean(embeddings_np, axis=0)
+
         # Get top classes
         top_indices = np.argsort(mean_scores)[::-1][:top_k]
         top_classes = [
@@ -131,11 +139,15 @@ class YAMNetClassifier:
             if mean_scores[idx] >= min_score
         ]
 
+        processing_time = time.time() - start_time
+
         return ClassificationResult(
             scores=scores_np,
             embeddings=embeddings_np,
-            spectrogram=spectrogram_np,
             top_classes=top_classes,
+            embedding=mean_embedding,
+            processing_time=processing_time,
+            spectrogram=spectrogram_np,
             all_classes=self.class_names,
         )
 
