@@ -7,11 +7,15 @@
     <link rel="preconnect" href="https://fonts.googleapis.com">
     <link rel="preconnect" href="https://fonts.gstatic.com" crossorigin>
     <link href="https://fonts.googleapis.com/css2?family=Inter:wght@300;400;500;600;700&display=swap" rel="stylesheet">
-    <script type="module">
-        import WaveSurfer from 'https://unpkg.com/wavesurfer.js@7/dist/wavesurfer.esm.js';
-        import Spectrogram from 'https://unpkg.com/wavesurfer.js@7/dist/plugins/spectrogram.esm.js';
+    <!-- WaveSurfer.js UMD bundle for better compatibility -->
+    <script src="https://unpkg.com/wavesurfer.js@7/dist/wavesurfer.min.js"></script>
+    <script src="https://unpkg.com/wavesurfer.js@7/dist/plugins/spectrogram.min.js"></script>
+    <script>
+        // Make WaveSurfer available globally
         window.WaveSurfer = WaveSurfer;
-        window.SpectrogramPlugin = Spectrogram;
+        window.SpectrogramPlugin = WaveSurfer.Spectrogram;
+        console.log('WaveSurfer loaded:', typeof WaveSurfer);
+        console.log('Spectrogram plugin loaded:', typeof WaveSurfer.Spectrogram);
     </script>
     <style>
         :root {
@@ -242,6 +246,50 @@
 
         .waveform-bars { display: flex; align-items: center; gap: 2px; height: 100%; padding: 0.5rem; }
         .waveform-bar { width: 3px; background: var(--accent-blue); border-radius: 2px; opacity: 0.6; }
+
+        /* Main player waveform and spectrogram */
+        /* Combined height: waveform (60) + spectrogram (300) = 360px */
+        .main-waveform-container {
+            height: 360px;
+            background: rgba(0, 0, 0, 0.3);
+            border-radius: 8px;
+            margin-bottom: 0.75rem;
+            position: relative;
+            overflow: visible;
+        }
+        .main-waveform-container .waveform-label {
+            position: absolute;
+            top: 4px;
+            left: 8px;
+            font-size: 10px;
+            color: rgba(255, 255, 255, 0.5);
+            text-transform: uppercase;
+            letter-spacing: 0.5px;
+            z-index: 10;
+        }
+        /* Spectrogram now renders inside WaveSurfer's shadow DOM, so hide this container */
+        .main-spectrogram-container {
+            display: none;
+        }
+        .main-spectrogram-container canvas {
+            width: 100% !important;
+            height: 100% !important;
+            position: absolute !important;
+            top: 0 !important;
+            left: 0 !important;
+            display: block !important;
+            visibility: visible !important;
+            opacity: 1 !important;
+        }
+        .main-spectrogram-container > div {
+            position: absolute !important;
+            width: 100% !important;
+            height: 100% !important;
+            top: 0 !important;
+            left: 0 !important;
+            display: block !important;
+            visibility: visible !important;
+        }
 
         .audio-controls { display: flex; align-items: center; gap: 1rem; }
 
@@ -476,14 +524,16 @@
         }
 
         /* Wavesurfer waveform container */
+        /* Wavesurfer container: waveform (40) + spectrogram (100) = 140px */
         .wavesurfer-container {
             flex: 1;
             min-width: 150px;
-            height: 48px;
+            height: 140px;
             background: rgba(0, 0, 0, 0.3);
             border-radius: 6px;
             cursor: pointer;
             position: relative;
+            overflow: visible;
         }
         .wavesurfer-container:hover {
             background: rgba(0, 0, 0, 0.4);
@@ -503,16 +553,9 @@
             border-radius: 8px;
             width: 100%;
         }
+        /* Spectrogram now renders inside WaveSurfer's shadow DOM, hide this container */
         .spectrogram-container {
-            width: 100%;
-            height: 150px;
-            background: linear-gradient(180deg, #1a0a2e 0%, #16213e 50%, #0f3460 100%);
-            border-radius: 6px;
-            overflow: visible !important;
-            position: relative;
-            display: block !important;
-            visibility: visible !important;
-            opacity: 1 !important;
+            display: none !important;
         }
         .spectrogram-container canvas {
             width: 100% !important;
@@ -555,7 +598,7 @@
             gap: 10px;
         }
         .waveform-spectrogram-row .wavesurfer-container {
-            height: 50px;
+            height: 140px;
             flex: 1;
         }
 
@@ -568,9 +611,7 @@
         .stems-fullwidth .stem-card {
             width: 100%;
         }
-        .stems-fullwidth .spectrogram-container {
-            height: 180px;
-        }
+        /* .stems-fullwidth .spectrogram-container - hidden, spectrogram in shadow DOM */
 
         /* AudioSep full-width visualization */
         .classification-item .audio-visualization {
@@ -578,11 +619,9 @@
             flex-basis: 100%;
             border-radius: 8px;
         }
-        .classification-item .spectrogram-container {
-            height: 160px;
-        }
+        /* .classification-item .spectrogram-container - hidden, spectrogram in shadow DOM */
         .classification-item .waveform-spectrogram-row .wavesurfer-container {
-            height: 50px;
+            height: 140px;
         }
 
         /* AudioSep Progress */
@@ -756,12 +795,17 @@
                             <div class="player-meta" id="player-meta">0:00 • 44.1kHz</div>
                         </div>
                     </div>
-                    <div class="waveform-container">
-                        <div class="waveform-bars" id="waveform"></div>
+                    <!-- Waveform visualization -->
+                    <div class="main-waveform-container" id="main-waveform-container">
+                        <span class="waveform-label">Waveform</span>
+                    </div>
+                    <!-- Spectrogram visualization (3x taller for source file) -->
+                    <div class="main-spectrogram-container" id="main-spectrogram-container">
+                        <span class="spectrogram-label">Spectrogram</span>
                     </div>
                     <div class="audio-controls">
-                        <button class="play-btn" id="play-btn" onclick="togglePlay()">▶</button>
-                        <div class="progress-bar" id="progress-bar" onclick="seek(event)">
+                        <button class="play-btn" id="play-btn">▶</button>
+                        <div class="progress-bar" id="progress-bar">
                             <div class="progress-fill" id="progress-fill"></div>
                         </div>
                         <div class="time-display" id="time-display">0:00 / 0:00</div>
@@ -865,20 +909,10 @@
     </main>
 
     <script>
-        // WaveSurfer is loaded via ES module - check will happen after load
-        let wavesurferReady = false;
-        function checkWavesurfer() {
-            if (typeof window.WaveSurfer !== 'undefined') {
-                wavesurferReady = true;
-                console.log('WaveSurfer.js loaded');
-                if (typeof window.SpectrogramPlugin !== 'undefined') {
-                    console.log('Spectrogram plugin loaded');
-                }
-            } else {
-                setTimeout(checkWavesurfer, 100);
-            }
-        }
-        setTimeout(checkWavesurfer, 500);
+        // WaveSurfer is loaded via UMD bundle synchronously
+        let wavesurferReady = typeof window.WaveSurfer !== 'undefined';
+        console.log('WaveSurfer ready on script start:', wavesurferReady);
+        console.log('SpectrogramPlugin:', typeof window.SpectrogramPlugin);
 
         let files = {};
         let selectedFileId = null;
@@ -891,6 +925,78 @@
             loadFiles();
             setupUpload();
         });
+
+        // Canvas protection system - prevents spectrograms/waveforms from being cleared
+        const protectedCanvases = new Map(); // canvas element -> { snapshot, observer }
+
+        function protectCanvas(canvas, label = 'unknown') {
+            if (!canvas || protectedCanvases.has(canvas)) return;
+
+            // Capture initial state after a delay
+            setTimeout(() => {
+                try {
+                    const snapshot = canvas.toDataURL('image/png');
+                    const ctx = canvas.getContext('2d');
+
+                    // Store the snapshot
+                    protectedCanvases.set(canvas, { snapshot, label });
+                    console.log(`Canvas protected: ${label}`);
+
+                    // Watch for clearing by periodically checking
+                    const checkInterval = setInterval(() => {
+                        if (!document.body.contains(canvas)) {
+                            clearInterval(checkInterval);
+                            protectedCanvases.delete(canvas);
+                            return;
+                        }
+
+                        try {
+                            const imageData = ctx.getImageData(0, 0, canvas.width, canvas.height);
+                            const isEmpty = !imageData.data.some(c => c !== 0);
+                            if (isEmpty && protectedCanvases.has(canvas)) {
+                                console.log(`Canvas cleared, restoring: ${label}`);
+                                const stored = protectedCanvases.get(canvas);
+                                const img = new Image();
+                                img.onload = () => {
+                                    ctx.clearRect(0, 0, canvas.width, canvas.height);
+                                    ctx.drawImage(img, 0, 0);
+                                };
+                                img.src = stored.snapshot;
+                            }
+                        } catch(e) {
+                            // Canvas might be tainted or removed
+                        }
+                    }, 100);
+                } catch(e) {
+                    console.warn('Failed to protect canvas:', e);
+                }
+            }, 1500); // Wait for rendering to complete
+        }
+
+        // Auto-protect any spectrogram canvas that appears
+        const canvasObserver = new MutationObserver((mutations) => {
+            mutations.forEach((mutation) => {
+                mutation.addedNodes.forEach((node) => {
+                    if (node.nodeType === Node.ELEMENT_NODE) {
+                        // Check if it's a canvas or contains canvases
+                        if (node.tagName === 'CANVAS') {
+                            const container = node.closest('.spectrogram-container, .main-spectrogram-container');
+                            if (container) {
+                                protectCanvas(node, container.id || 'spectrogram');
+                            }
+                        }
+                        node.querySelectorAll?.('canvas').forEach(canvas => {
+                            const container = canvas.closest('.spectrogram-container, .main-spectrogram-container');
+                            if (container) {
+                                protectCanvas(canvas, container.id || 'spectrogram');
+                            }
+                        });
+                    }
+                });
+            });
+        });
+
+        canvasObserver.observe(document.body, { childList: true, subtree: true });
 
         function setupUpload() {
             const zone = document.getElementById('upload-zone');
@@ -998,7 +1104,8 @@
 
             const audio = document.getElementById('main-audio');
             audio.src = file.path;
-            generateWaveform();
+            // Initialize main player with wavesurfer and spectrogram
+            initMainPlayer(file.path);
 
             document.getElementById('classification-results').innerHTML = `<div style="color: var(--text-muted); font-size: 0.875rem; text-align: center; padding: 1rem;">Click "Classify" to analyze audio content</div>`;
             document.getElementById('demucs-results').innerHTML = '';
@@ -1006,14 +1113,188 @@
             document.getElementById('audiosep-classifications').innerHTML = `<div style="color: var(--text-muted); text-align: center; padding: 2rem;">Classify the audio first to see detected sounds</div>`;
         }
 
-        function generateWaveform() {
-            const container = document.getElementById('waveform');
-            let html = '';
-            for (let i = 0; i < 60; i++) {
-                const height = 20 + Math.random() * 60;
-                html += `<div class="waveform-bar" style="height: ${height}%"></div>`;
+        // Main player wavesurfer instance
+        let mainWavesurfer = null;
+        let mainSpectrogramSnapshot = null;
+        let mainWaveformSnapshot = null;
+        let mainPreservationActive = false;
+        let currentWavesurfer = null;  // Track currently playing wavesurfer
+
+        function initMainPlayer(audioPath) {
+            const waveContainer = document.getElementById('main-waveform-container');
+            const specContainer = document.getElementById('main-spectrogram-container');
+            const playBtn = document.getElementById('play-btn');
+            const progressBar = document.getElementById('progress-bar');
+            const progressFill = document.getElementById('progress-fill');
+            const timeDisplay = document.getElementById('time-display');
+
+            // Destroy previous instance
+            if (mainWavesurfer) {
+                mainWavesurfer.destroy();
+                mainWavesurfer = null;
             }
-            container.innerHTML = html;
+            mainSpectrogramSnapshot = null;
+            mainWaveformSnapshot = null;
+            mainPreservationActive = false;
+
+            // Create inner containers for WaveSurfer to render into
+            waveContainer.innerHTML = '<span class="waveform-label">Waveform</span><div id="main-waveform-inner" style="width:100%;height:100%;"></div>';
+            specContainer.innerHTML = '<span class="spectrogram-label">Spectrogram</span><div id="main-spectrogram-inner" style="width:100%;height:100%;position:absolute;top:0;left:0;"></div>';
+
+            const waveInner = document.getElementById('main-waveform-inner');
+            const specInner = document.getElementById('main-spectrogram-inner');
+
+            if (typeof window.WaveSurfer === 'undefined') {
+                console.error('WaveSurfer not loaded for main player');
+                waveInner.innerHTML = '<div style="color:#f59e0b;padding:15px;">Audio visualization unavailable</div>';
+                return;
+            }
+
+            try {
+                // Create wavesurfer for main player - spectrogram renders inside shadow DOM
+                // Total height = waveform (60) + spectrogram (300) = 360
+                mainWavesurfer = window.WaveSurfer.create({
+                    container: waveInner,
+                    waveColor: '#3b82f6',
+                    progressColor: '#8b5cf6',
+                    cursorColor: '#ffffff',
+                    cursorWidth: 2,
+                    barWidth: 3,
+                    barGap: 2,
+                    barRadius: 3,
+                    height: 60,
+                    normalize: true,
+                    url: audioPath,
+                });
+
+                // Register spectrogram plugin after wavesurfer is created (WaveSurfer v7 pattern)
+                // Note: In v7, spectrogram renders inside WaveSurfer's shadow DOM
+                let spectrogramPlugin = null;
+                if (typeof window.SpectrogramPlugin !== 'undefined') {
+                    spectrogramPlugin = mainWavesurfer.registerPlugin(window.SpectrogramPlugin.create({
+                        labels: true,
+                        height: 300,
+                        splitChannels: false,
+                        fftSamples: 1024,
+                    }));
+                    console.log('Main spectrogram plugin registered (inside shadow DOM):', spectrogramPlugin);
+                }
+
+                // Helper functions for visual preservation
+                const captureCanvas = (canvas) => {
+                    if (!canvas || !canvas.getContext) return null;
+                    try { return canvas.toDataURL('image/png'); } catch(e) { return null; }
+                };
+
+                const restoreCanvas = (canvas, dataUrl) => {
+                    if (!canvas || !dataUrl) return;
+                    const ctx = canvas.getContext('2d');
+                    const img = new Image();
+                    img.onload = () => {
+                        ctx.clearRect(0, 0, canvas.width, canvas.height);
+                        ctx.drawImage(img, 0, 0);
+                    };
+                    img.src = dataUrl;
+                };
+
+                const forceMainVisualsVisible = () => {
+                    [specContainer, waveContainer].forEach(container => {
+                        if (container) {
+                            container.style.visibility = 'visible';
+                            container.style.opacity = '1';
+                            container.querySelectorAll('*').forEach(child => {
+                                child.style.visibility = 'visible';
+                                child.style.opacity = '1';
+                            });
+                        }
+                    });
+
+                    // Restore if cleared
+                    if (mainPreservationActive) {
+                        const specCanvas = specContainer?.querySelector('canvas');
+                        if (specCanvas && mainSpectrogramSnapshot) {
+                            const ctx = specCanvas.getContext('2d');
+                            const imageData = ctx.getImageData(0, 0, specCanvas.width, specCanvas.height);
+                            if (!imageData.data.some(c => c !== 0)) {
+                                restoreCanvas(specCanvas, mainSpectrogramSnapshot);
+                            }
+                        }
+                    }
+                };
+
+                const preserveMainVisuals = () => {
+                    const specCanvas = specContainer?.querySelector('canvas');
+                    const waveCanvas = waveContainer?.querySelector('canvas');
+                    if (specCanvas) mainSpectrogramSnapshot = captureCanvas(specCanvas);
+                    if (waveCanvas) mainWaveformSnapshot = captureCanvas(waveCanvas);
+                    mainPreservationActive = true;
+                    console.log('Main player visuals captured');
+                };
+
+                // Event handlers
+                mainWavesurfer.on('ready', () => {
+                    console.log('Main player ready');
+                    forceMainVisualsVisible();
+                    setTimeout(() => { preserveMainVisuals(); forceMainVisualsVisible(); }, 500);
+                    setTimeout(() => { preserveMainVisuals(); forceMainVisualsVisible(); }, 1000);
+                });
+
+                mainWavesurfer.on('play', () => {
+                    playBtn.innerHTML = '⏸';
+                    if (!mainPreservationActive) setTimeout(preserveMainVisuals, 100);
+                    forceMainVisualsVisible();
+                });
+
+                mainWavesurfer.on('pause', () => {
+                    playBtn.innerHTML = '▶';
+                    forceMainVisualsVisible();
+                });
+
+                mainWavesurfer.on('finish', () => {
+                    playBtn.innerHTML = '▶';
+                    console.log('Main player finished');
+                    forceMainVisualsVisible();
+                    setTimeout(forceMainVisualsVisible, 50);
+                    setTimeout(forceMainVisualsVisible, 200);
+                    setTimeout(forceMainVisualsVisible, 500);
+                });
+
+                mainWavesurfer.on('timeupdate', (time) => {
+                    const duration = mainWavesurfer.getDuration();
+                    const progress = (time / duration) * 100;
+                    progressFill.style.width = progress + '%';
+                    timeDisplay.textContent = `${formatTime(time)} / ${formatTime(duration)}`;
+                    // Keep spectrogram visible
+                    if (specContainer) {
+                        specContainer.style.visibility = 'visible';
+                        specContainer.style.opacity = '1';
+                    }
+                });
+
+                mainWavesurfer.on('seeking', forceMainVisualsVisible);
+                mainWavesurfer.on('redraw', forceMainVisualsVisible);
+                mainWavesurfer.on('redrawcomplete', forceMainVisualsVisible);
+
+                // Play button handler
+                playBtn.onclick = () => {
+                    if (currentWavesurfer && currentWavesurfer !== mainWavesurfer) {
+                        currentWavesurfer.pause();
+                    }
+                    mainWavesurfer.playPause();
+                    currentWavesurfer = mainWavesurfer;
+                };
+
+                // Progress bar click handler
+                progressBar.onclick = (e) => {
+                    const rect = progressBar.getBoundingClientRect();
+                    const percent = (e.clientX - rect.left) / rect.width;
+                    mainWavesurfer.seekTo(percent);
+                };
+
+            } catch (err) {
+                console.error('Main player init failed:', err);
+                waveContainer.innerHTML = '<span class="waveform-label">Waveform</span><div style="color:#ef4444;padding:15px;">Visualization failed</div>';
+            }
         }
 
         // Tabs
@@ -1025,30 +1306,19 @@
             document.getElementById(`tab-${tab}`).classList.add('active');
         }
 
-        // Audio Player
+        // Audio Player - Now handled by wavesurfer in initMainPlayer()
+        // Legacy togglePlay for fallback
         function togglePlay() {
-            const audio = document.getElementById('main-audio');
-            const btn = document.getElementById('play-btn');
-            if (audio.paused) { audio.play(); btn.innerHTML = '⏸'; }
-            else { audio.pause(); btn.innerHTML = '▶'; }
+            if (mainWavesurfer) {
+                mainWavesurfer.playPause();
+            } else {
+                const audio = document.getElementById('main-audio');
+                const btn = document.getElementById('play-btn');
+                if (audio.paused) { audio.play(); btn.innerHTML = '⏸'; }
+                else { audio.pause(); btn.innerHTML = '▶'; }
+            }
         }
-
-        const mainAudio = document.getElementById('main-audio');
-        mainAudio.addEventListener('timeupdate', function() {
-            const progress = (this.currentTime / this.duration) * 100;
-            document.getElementById('progress-fill').style.width = progress + '%';
-            document.getElementById('time-display').textContent = `${formatTime(this.currentTime)} / ${formatTime(this.duration)}`;
-        });
-        mainAudio.addEventListener('ended', () => document.getElementById('play-btn').innerHTML = '▶');
-        mainAudio.addEventListener('play', () => document.getElementById('play-btn').innerHTML = '⏸');
-        mainAudio.addEventListener('pause', () => document.getElementById('play-btn').innerHTML = '▶');
-
-        function seek(e) {
-            const bar = document.getElementById('progress-bar');
-            const rect = bar.getBoundingClientRect();
-            const pos = (e.clientX - rect.left) / rect.width;
-            document.getElementById('main-audio').currentTime = pos * mainAudio.duration;
-        }
+        // seek function now handled by mainWavesurfer in initMainPlayer
 
         // Classification
         async function classifyAudio() {
@@ -1290,7 +1560,7 @@
 
         // Wavesurfer instances for AudioSep
         const wavesurferInstances = {};
-        let currentWavesurfer = null;
+        // currentWavesurfer is declared above with mainWavesurfer
 
         function initWavesurfer(containerId, audioPath) {
             const container = document.getElementById(containerId);
@@ -1382,23 +1652,7 @@
             waveContainer.innerHTML = '<div style="color:#f59e0b;font-size:10px;padding:8px;">Loading...</div>';
 
             try {
-                // Create spectrogram plugin if container exists
-                const plugins = [];
-                let spectrogramPlugin = null;
-                if (spectrogramContainer && typeof window.SpectrogramPlugin !== 'undefined') {
-                    spectrogramPlugin = window.SpectrogramPlugin.create({
-                        container: spectrogramContainer,
-                        labels: true,
-                        height: 150,
-                        splitChannels: false,
-                        fftSamples: 512,
-                        frequencyMin: 0,
-                        frequencyMax: 8000,
-                        colorMap: 'roseus',
-                    });
-                    plugins.push(spectrogramPlugin);
-                }
-
+                // Create wavesurfer - spectrogram renders inside shadow DOM
                 const wavesurfer = window.WaveSurfer.create({
                     container: waveContainer,
                     waveColor: '#f59e0b',
@@ -1411,8 +1665,18 @@
                     height: 40,
                     normalize: true,
                     url: audioPath,
-                    plugins: plugins,
                 });
+
+                // Register spectrogram plugin (renders inside WaveSurfer's shadow DOM)
+                let spectrogramPlugin = null;
+                if (typeof window.SpectrogramPlugin !== 'undefined') {
+                    spectrogramPlugin = wavesurfer.registerPlugin(window.SpectrogramPlugin.create({
+                        labels: false,
+                        height: 100,
+                        splitChannels: false,
+                        fftSamples: 512,
+                    }));
+                }
 
                 wavesurferInstances[waveContainerId] = wavesurfer;
 
@@ -1426,7 +1690,35 @@
                     });
                 }
 
-                // Helper to force spectrogram visibility
+                // Storage for preserved canvas content
+                let spectrogramSnapshot = null;
+                let waveformSnapshot = null;
+                let preservationActive = false;
+
+                // Helper to capture canvas content as data URL
+                const captureCanvas = (canvas) => {
+                    if (!canvas || !canvas.getContext) return null;
+                    try {
+                        return canvas.toDataURL('image/png');
+                    } catch(e) {
+                        console.warn('Canvas capture failed:', e);
+                        return null;
+                    }
+                };
+
+                // Helper to restore canvas from data URL
+                const restoreCanvas = (canvas, dataUrl) => {
+                    if (!canvas || !dataUrl) return;
+                    const ctx = canvas.getContext('2d');
+                    const img = new Image();
+                    img.onload = () => {
+                        ctx.clearRect(0, 0, canvas.width, canvas.height);
+                        ctx.drawImage(img, 0, 0);
+                    };
+                    img.src = dataUrl;
+                };
+
+                // Helper to force spectrogram visibility and restore if needed
                 const forceSpectrogramVisible = () => {
                     if (spectrogramContainer) {
                         spectrogramContainer.style.visibility = 'visible';
@@ -1439,40 +1731,131 @@
                             child.style.opacity = '1';
                             child.style.display = child.tagName === 'CANVAS' ? 'block' : '';
                         });
+
+                        // Restore spectrogram canvas if it was cleared
+                        if (preservationActive && spectrogramSnapshot) {
+                            const specCanvas = spectrogramContainer.querySelector('canvas');
+                            if (specCanvas) {
+                                const ctx = specCanvas.getContext('2d');
+                                const imageData = ctx.getImageData(0, 0, specCanvas.width, specCanvas.height);
+                                const isEmpty = !imageData.data.some(channel => channel !== 0);
+                                if (isEmpty) {
+                                    console.log('Restoring cleared spectrogram canvas');
+                                    restoreCanvas(specCanvas, spectrogramSnapshot);
+                                }
+                            }
+                        }
                     }
+                };
+
+                // Helper to preserve waveform appearance
+                const forceWaveformVisible = () => {
+                    if (waveContainer) {
+                        waveContainer.style.visibility = 'visible';
+                        waveContainer.style.opacity = '1';
+                        const waveCanvas = waveContainer.querySelector('canvas');
+                        if (waveCanvas) {
+                            waveCanvas.style.visibility = 'visible';
+                            waveCanvas.style.opacity = '1';
+                        }
+
+                        // Restore waveform canvas if it was cleared
+                        if (preservationActive && waveformSnapshot) {
+                            if (waveCanvas) {
+                                const ctx = waveCanvas.getContext('2d');
+                                const imageData = ctx.getImageData(0, 0, waveCanvas.width, waveCanvas.height);
+                                const isEmpty = !imageData.data.some(channel => channel !== 0);
+                                if (isEmpty) {
+                                    console.log('Restoring cleared waveform canvas');
+                                    restoreCanvas(waveCanvas, waveformSnapshot);
+                                }
+                            }
+                        }
+                    }
+                };
+
+                // Capture and preserve visuals
+                const preserveVisuals = () => {
+                    if (spectrogramContainer) {
+                        const specCanvas = spectrogramContainer.querySelector('canvas');
+                        if (specCanvas) {
+                            spectrogramSnapshot = captureCanvas(specCanvas);
+                            console.log('Spectrogram snapshot captured');
+                        }
+                    }
+                    if (waveContainer) {
+                        const waveCanvas = waveContainer.querySelector('canvas');
+                        if (waveCanvas) {
+                            waveformSnapshot = captureCanvas(waveCanvas);
+                            console.log('Waveform snapshot captured');
+                        }
+                    }
+                    preservationActive = true;
                 };
 
                 wavesurfer.on('play', () => {
                     if(playBtn) playBtn.innerHTML = '⏸';
+                    // Capture visuals at start of play if not already captured
+                    if (!preservationActive) {
+                        setTimeout(preserveVisuals, 100);
+                    }
                     forceSpectrogramVisible();
-                    // Re-check after short delay in case of redraw
-                    setTimeout(forceSpectrogramVisible, 50);
-                    setTimeout(forceSpectrogramVisible, 200);
+                    forceWaveformVisible();
                 });
                 wavesurfer.on('pause', () => {
                     if(playBtn) playBtn.innerHTML = '▶';
                     forceSpectrogramVisible();
+                    forceWaveformVisible();
                 });
                 wavesurfer.on('finish', () => {
                     if(playBtn) playBtn.innerHTML = '▶';
                     currentWavesurfer = null;
+                    console.log('Audio finished, preserving visuals');
+                    // Force restore visuals after finish with multiple delays
                     forceSpectrogramVisible();
+                    forceWaveformVisible();
+                    setTimeout(() => { forceSpectrogramVisible(); forceWaveformVisible(); }, 50);
+                    setTimeout(() => { forceSpectrogramVisible(); forceWaveformVisible(); }, 200);
+                    setTimeout(() => { forceSpectrogramVisible(); forceWaveformVisible(); }, 500);
                 });
                 wavesurfer.on('ready', () => {
                     console.log('Wavesurfer with spectrogram ready:', waveContainerId);
                     forceSpectrogramVisible();
-                    // Multiple delays to catch any late rendering
-                    setTimeout(forceSpectrogramVisible, 100);
-                    setTimeout(forceSpectrogramVisible, 500);
+                    forceWaveformVisible();
+                    // Capture visuals after ready with delays for rendering
+                    setTimeout(() => {
+                        preserveVisuals();
+                        forceSpectrogramVisible();
+                        forceWaveformVisible();
+                    }, 500);
+                    setTimeout(() => {
+                        preserveVisuals();
+                        forceSpectrogramVisible();
+                        forceWaveformVisible();
+                    }, 1000);
                 });
                 wavesurfer.on('redraw', () => {
                     forceSpectrogramVisible();
+                    forceWaveformVisible();
                 });
                 wavesurfer.on('redrawcomplete', () => {
                     forceSpectrogramVisible();
+                    forceWaveformVisible();
                 });
                 wavesurfer.on('interaction', () => {
                     forceSpectrogramVisible();
+                    forceWaveformVisible();
+                });
+                wavesurfer.on('seeking', () => {
+                    forceSpectrogramVisible();
+                    forceWaveformVisible();
+                });
+                wavesurfer.on('timeupdate', () => {
+                    // Keep spectrogram visible during playback
+                    if (spectrogramContainer) {
+                        spectrogramContainer.style.visibility = 'visible';
+                        spectrogramContainer.style.opacity = '1';
+                    }
                 });
                 wavesurfer.on('error', (e) => {
                     console.error('Wavesurfer error:', e);
