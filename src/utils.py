@@ -71,6 +71,11 @@ def save_audio(
     if normalize:
         audio = normalize_audio(audio)
 
+    # soundfile expects (samples, channels) for stereo, transpose if needed
+    if audio.ndim == 2 and audio.shape[0] <= 2 and audio.shape[1] > audio.shape[0]:
+        # Shape is (channels, samples), transpose to (samples, channels)
+        audio = audio.T
+
     sf.write(str(path), audio, sr)
     return path
 

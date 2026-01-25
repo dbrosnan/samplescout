@@ -7,6 +7,12 @@
     <link rel="preconnect" href="https://fonts.googleapis.com">
     <link rel="preconnect" href="https://fonts.gstatic.com" crossorigin>
     <link href="https://fonts.googleapis.com/css2?family=Inter:wght@300;400;500;600;700&display=swap" rel="stylesheet">
+    <script type="module">
+        import WaveSurfer from 'https://unpkg.com/wavesurfer.js@7/dist/wavesurfer.esm.js';
+        import Spectrogram from 'https://unpkg.com/wavesurfer.js@7/dist/plugins/spectrogram.esm.js';
+        window.WaveSurfer = WaveSurfer;
+        window.SpectrogramPlugin = Spectrogram;
+    </script>
     <style>
         :root {
             --bg-primary: #0a0a0f;
@@ -22,15 +28,13 @@
             --accent-green: #10b981;
             --accent-orange: #f59e0b;
             --accent-red: #ef4444;
+            --accent-pink: #ec4899;
             --gradient-1: linear-gradient(135deg, #3b82f6 0%, #8b5cf6 100%);
             --gradient-2: linear-gradient(135deg, #10b981 0%, #3b82f6 100%);
+            --gradient-3: linear-gradient(135deg, #f59e0b 0%, #ef4444 100%);
         }
 
-        * {
-            margin: 0;
-            padding: 0;
-            box-sizing: border-box;
-        }
+        * { margin: 0; padding: 0; box-sizing: border-box; }
 
         body {
             font-family: 'Inter', -apple-system, BlinkMacSystemFont, sans-serif;
@@ -40,7 +44,6 @@
             line-height: 1.6;
         }
 
-        /* Header */
         .header {
             background: var(--bg-secondary);
             border-bottom: 1px solid var(--border-color);
@@ -52,7 +55,7 @@
         }
 
         .header-content {
-            max-width: 1400px;
+            max-width: 1800px;
             margin: 0 auto;
             display: flex;
             align-items: center;
@@ -90,24 +93,17 @@
             margin-top: -4px;
         }
 
-        /* Main Layout */
         .main {
-            max-width: 1400px;
+            max-width: 1800px;
             margin: 0 auto;
             padding: 2rem;
             display: grid;
-            grid-template-columns: 380px 1fr;
+            grid-template-columns: 320px 1fr;
             gap: 2rem;
         }
 
-        /* Sidebar */
-        .sidebar {
-            display: flex;
-            flex-direction: column;
-            gap: 1.5rem;
-        }
+        .sidebar { display: flex; flex-direction: column; gap: 1.5rem; }
 
-        /* Cards */
         .card {
             background: var(--bg-card);
             border: 1px solid var(--border-color);
@@ -123,18 +119,9 @@
             margin-bottom: 1rem;
         }
 
-        .card-title {
-            font-size: 1rem;
-            font-weight: 600;
-            color: var(--text-primary);
-        }
+        .card-title { font-size: 1rem; font-weight: 600; }
+        .card-subtitle { font-size: 0.75rem; color: var(--text-muted); }
 
-        .card-subtitle {
-            font-size: 0.75rem;
-            color: var(--text-muted);
-        }
-
-        /* Upload Zone */
         .upload-zone {
             border: 2px dashed var(--border-color);
             border-radius: 12px;
@@ -149,26 +136,11 @@
             background: rgba(59, 130, 246, 0.05);
         }
 
-        .upload-icon {
-            font-size: 2.5rem;
-            margin-bottom: 0.75rem;
-            opacity: 0.5;
-        }
+        .upload-icon { font-size: 2.5rem; margin-bottom: 0.75rem; opacity: 0.5; }
+        .upload-text { color: var(--text-secondary); font-size: 0.875rem; }
+        .upload-text strong { color: var(--accent-blue); }
+        #file-input { display: none; }
 
-        .upload-text {
-            color: var(--text-secondary);
-            font-size: 0.875rem;
-        }
-
-        .upload-text strong {
-            color: var(--accent-blue);
-        }
-
-        #file-input {
-            display: none;
-        }
-
-        /* File List */
         .file-list {
             display: flex;
             flex-direction: column;
@@ -202,15 +174,9 @@
             display: flex;
             align-items: center;
             justify-content: center;
-            font-size: 1rem;
-            flex-shrink: 0;
         }
 
-        .file-info {
-            flex: 1;
-            min-width: 0;
-        }
-
+        .file-info { flex: 1; min-width: 0; }
         .file-name {
             font-size: 0.875rem;
             font-weight: 500;
@@ -218,11 +184,7 @@
             overflow: hidden;
             text-overflow: ellipsis;
         }
-
-        .file-meta {
-            font-size: 0.75rem;
-            color: var(--text-muted);
-        }
+        .file-meta { font-size: 0.75rem; color: var(--text-muted); }
 
         .file-delete {
             width: 28px;
@@ -239,22 +201,11 @@
             transition: all 0.2s;
         }
 
-        .file-item:hover .file-delete {
-            opacity: 1;
-        }
+        .file-item:hover .file-delete { opacity: 1; }
+        .file-delete:hover { background: rgba(239, 68, 68, 0.2); }
 
-        .file-delete:hover {
-            background: rgba(239, 68, 68, 0.2);
-        }
+        .content { display: flex; flex-direction: column; gap: 1.5rem; }
 
-        /* Content Area */
-        .content {
-            display: flex;
-            flex-direction: column;
-            gap: 1.5rem;
-        }
-
-        /* Empty State */
         .empty-state {
             display: flex;
             flex-direction: column;
@@ -265,18 +216,8 @@
             color: var(--text-muted);
         }
 
-        .empty-state-icon {
-            font-size: 4rem;
-            margin-bottom: 1rem;
-            opacity: 0.3;
-        }
+        .empty-state-icon { font-size: 4rem; margin-bottom: 1rem; opacity: 0.3; }
 
-        .empty-state-text {
-            font-size: 1.125rem;
-            margin-bottom: 0.5rem;
-        }
-
-        /* Audio Player */
         .audio-player-large {
             background: linear-gradient(135deg, rgba(59, 130, 246, 0.1) 0%, rgba(139, 92, 246, 0.1) 100%);
             border: 1px solid var(--border-color);
@@ -284,22 +225,9 @@
             padding: 1.5rem;
         }
 
-        .player-header {
-            display: flex;
-            align-items: center;
-            gap: 1rem;
-            margin-bottom: 1rem;
-        }
-
-        .player-title {
-            font-size: 1.25rem;
-            font-weight: 600;
-        }
-
-        .player-meta {
-            font-size: 0.875rem;
-            color: var(--text-muted);
-        }
+        .player-header { display: flex; align-items: center; gap: 1rem; margin-bottom: 1rem; }
+        .player-title { font-size: 1.25rem; font-weight: 600; }
+        .player-meta { font-size: 0.875rem; color: var(--text-muted); }
 
         .waveform-container {
             height: 80px;
@@ -312,26 +240,10 @@
             overflow: hidden;
         }
 
-        .waveform-bars {
-            display: flex;
-            align-items: center;
-            gap: 2px;
-            height: 100%;
-            padding: 0.5rem;
-        }
+        .waveform-bars { display: flex; align-items: center; gap: 2px; height: 100%; padding: 0.5rem; }
+        .waveform-bar { width: 3px; background: var(--accent-blue); border-radius: 2px; opacity: 0.6; }
 
-        .waveform-bar {
-            width: 3px;
-            background: var(--accent-blue);
-            border-radius: 2px;
-            opacity: 0.6;
-        }
-
-        .audio-controls {
-            display: flex;
-            align-items: center;
-            gap: 1rem;
-        }
+        .audio-controls { display: flex; align-items: center; gap: 1rem; }
 
         .play-btn {
             width: 48px;
@@ -347,10 +259,7 @@
             font-size: 1.25rem;
             transition: transform 0.2s;
         }
-
-        .play-btn:hover {
-            transform: scale(1.05);
-        }
+        .play-btn:hover { transform: scale(1.05); }
 
         .progress-bar {
             flex: 1;
@@ -369,111 +278,54 @@
             transition: width 0.1s;
         }
 
-        .time-display {
-            font-size: 0.75rem;
-            color: var(--text-muted);
-            font-variant-numeric: tabular-nums;
+        .time-display { font-size: 0.75rem; color: var(--text-muted); font-variant-numeric: tabular-nums; }
+
+        /* Tabs */
+        .separator-tabs {
+            display: flex;
+            gap: 0.5rem;
+            margin-bottom: 1.5rem;
+            background: var(--bg-card);
+            padding: 0.375rem;
+            border-radius: 12px;
+            border: 1px solid var(--border-color);
         }
 
-        /* Classification Results */
-        .classification-results {
+        .separator-tab {
+            flex: 1;
+            padding: 0.75rem 1rem;
+            border: none;
+            background: transparent;
+            color: var(--text-muted);
+            font-weight: 500;
+            font-size: 0.875rem;
+            cursor: pointer;
+            border-radius: 8px;
+            transition: all 0.2s;
             display: flex;
-            flex-direction: column;
+            align-items: center;
+            justify-content: center;
             gap: 0.5rem;
         }
 
-        .class-item {
-            display: flex;
-            align-items: center;
-            gap: 0.75rem;
+        .separator-tab:hover { color: var(--text-primary); background: var(--bg-card-hover); }
+
+        .separator-tab.active {
+            background: var(--accent-blue);
+            color: white;
         }
 
-        .class-rank {
-            width: 24px;
-            font-size: 0.75rem;
-            color: var(--text-muted);
-            text-align: right;
-        }
+        .separator-tab.active.demucs { background: var(--accent-purple); }
+        .separator-tab.active.spleeter { background: var(--accent-green); }
+        .separator-tab.active.audiosep { background: var(--accent-orange); }
+        .separator-tab.active.mdxnet { background: #3b82f6; }
 
-        .class-name {
-            width: 180px;
-            font-size: 0.875rem;
-            white-space: nowrap;
-            overflow: hidden;
-            text-overflow: ellipsis;
-        }
+        .tab-icon { font-size: 1.125rem; }
 
-        .class-bar-container {
-            flex: 1;
-            height: 20px;
-            background: rgba(255, 255, 255, 0.05);
-            border-radius: 4px;
-            overflow: hidden;
-        }
+        .tab-content { display: none; }
+        .tab-content.active { display: block; }
 
-        .class-bar {
-            height: 100%;
-            background: var(--gradient-2);
-            border-radius: 4px;
-            transition: width 0.5s ease;
-        }
-
-        .class-score {
-            width: 50px;
-            font-size: 0.75rem;
-            color: var(--text-secondary);
-            text-align: right;
-        }
-
-        /* Separator Selection */
-        .separator-grid {
-            display: grid;
-            grid-template-columns: repeat(3, 1fr);
-            gap: 1rem;
-        }
-
-        .separator-card {
-            background: var(--bg-card);
-            border: 2px solid var(--border-color);
-            border-radius: 12px;
-            padding: 1rem;
-            cursor: pointer;
-            transition: all 0.2s ease;
-            text-align: center;
-        }
-
-        .separator-card:hover {
-            border-color: var(--accent-purple);
-            background: var(--bg-card-hover);
-        }
-
-        .separator-card.active {
-            border-color: var(--accent-blue);
-            background: rgba(59, 130, 246, 0.1);
-        }
-
-        .separator-card.processing {
-            opacity: 0.7;
-            pointer-events: none;
-        }
-
-        .separator-icon {
-            font-size: 2rem;
-            margin-bottom: 0.5rem;
-        }
-
-        .separator-name {
-            font-weight: 600;
-            font-size: 0.875rem;
-            margin-bottom: 0.25rem;
-        }
-
-        .separator-desc {
-            font-size: 0.75rem;
-            color: var(--text-muted);
-        }
-
-        /* Stems Grid */
+        /* Demucs/Spleeter Stems */
         .stems-grid {
             display: grid;
             grid-template-columns: repeat(2, 1fr);
@@ -487,17 +339,8 @@
             padding: 1rem;
         }
 
-        .stem-header {
-            display: flex;
-            align-items: center;
-            justify-content: space-between;
-            margin-bottom: 0.75rem;
-        }
-
-        .stem-name {
-            font-weight: 600;
-            text-transform: capitalize;
-        }
+        .stem-header { display: flex; align-items: center; justify-content: space-between; margin-bottom: 0.75rem; }
+        .stem-name { font-weight: 600; text-transform: capitalize; }
 
         .stem-badge {
             font-size: 0.625rem;
@@ -508,11 +351,7 @@
             text-transform: uppercase;
         }
 
-        .stem-player {
-            display: flex;
-            align-items: center;
-            gap: 0.75rem;
-        }
+        .stem-player { display: flex; align-items: center; gap: 0.75rem; }
 
         .stem-play-btn {
             width: 36px;
@@ -527,10 +366,7 @@
             justify-content: center;
             transition: all 0.2s;
         }
-
-        .stem-play-btn:hover {
-            background: var(--accent-blue);
-        }
+        .stem-play-btn:hover { background: var(--accent-blue); }
 
         .stem-waveform {
             flex: 1;
@@ -552,14 +388,234 @@
             justify-content: center;
             border-radius: 6px;
             transition: all 0.2s;
+            text-decoration: none;
+        }
+        .stem-download:hover { background: var(--bg-card-hover); color: var(--text-primary); }
+
+        /* AudioSep Classifications */
+        .audiosep-intro {
+            text-align: center;
+            padding: 1rem;
+            color: var(--text-secondary);
+            font-size: 0.875rem;
         }
 
-        .stem-download:hover {
-            background: var(--bg-card-hover);
-            color: var(--text-primary);
+        .classification-list {
+            display: flex;
+            flex-direction: column;
+            gap: 1rem;
         }
 
-        /* Loading States */
+        .classification-item {
+            display: flex;
+            flex-wrap: wrap;
+            align-items: center;
+            gap: 1rem;
+            padding: 1rem;
+            background: var(--bg-card);
+            border: 1px solid var(--border-color);
+            border-radius: 12px;
+            transition: all 0.2s;
+        }
+
+        .classification-item:hover { border-color: var(--accent-orange); }
+
+        .classification-item.has-visualization {
+            flex-direction: column;
+            align-items: stretch;
+        }
+        .classification-item.has-visualization > .classification-info,
+        .classification-item.has-visualization > .classification-actions {
+            display: inline-flex;
+        }
+        .classification-item.has-visualization .audio-visualization {
+            margin-top: 1rem;
+        }
+
+        .classification-info { flex: 1; }
+        .classification-name { font-weight: 600; margin-bottom: 0.25rem; }
+
+        .classification-score-bar {
+            height: 4px;
+            background: rgba(255, 255, 255, 0.1);
+            border-radius: 2px;
+            overflow: hidden;
+        }
+
+        .classification-score-fill {
+            height: 100%;
+            background: var(--gradient-3);
+            border-radius: 2px;
+        }
+
+        .classification-score { font-size: 0.75rem; color: var(--text-muted); margin-top: 0.25rem; }
+
+        .classification-actions { display: flex; gap: 0.5rem; }
+
+        .separate-btn {
+            padding: 0.5rem 1rem;
+            border: none;
+            background: var(--accent-orange);
+            color: white;
+            border-radius: 6px;
+            font-size: 0.75rem;
+            font-weight: 500;
+            cursor: pointer;
+            transition: all 0.2s;
+        }
+        .separate-btn:hover { background: var(--accent-red); }
+        .separate-btn:disabled { opacity: 0.5; cursor: not-allowed; }
+
+        .separated-player {
+            display: flex;
+            align-items: center;
+            gap: 0.5rem;
+            margin-top: 0.75rem;
+            padding-top: 0.75rem;
+            border-top: 1px solid var(--border-color);
+        }
+
+        /* Wavesurfer waveform container */
+        .wavesurfer-container {
+            flex: 1;
+            min-width: 150px;
+            height: 48px;
+            background: rgba(0, 0, 0, 0.3);
+            border-radius: 6px;
+            cursor: pointer;
+            position: relative;
+        }
+        .wavesurfer-container:hover {
+            background: rgba(0, 0, 0, 0.4);
+        }
+        .wavesurfer-container wave {
+            overflow: visible !important;
+        }
+
+        /* Spectrogram visualization - full width */
+        .audio-visualization {
+            display: flex;
+            flex-direction: column;
+            gap: 8px;
+            margin-top: 12px;
+            padding: 12px;
+            background: rgba(0, 0, 0, 0.4);
+            border-radius: 8px;
+            width: 100%;
+        }
+        .spectrogram-container {
+            width: 100%;
+            height: 150px;
+            background: linear-gradient(180deg, #1a0a2e 0%, #16213e 50%, #0f3460 100%);
+            border-radius: 6px;
+            overflow: hidden;
+            position: relative;
+        }
+        .spectrogram-container canvas {
+            width: 100% !important;
+            height: 100% !important;
+            position: absolute !important;
+            top: 0 !important;
+            left: 0 !important;
+        }
+        .spectrogram-container > div {
+            position: absolute !important;
+            width: 100% !important;
+            height: 100% !important;
+            top: 0 !important;
+            left: 0 !important;
+        }
+        .spectrogram-label {
+            position: absolute;
+            top: 4px;
+            left: 8px;
+            font-size: 10px;
+            color: rgba(255, 255, 255, 0.6);
+            text-transform: uppercase;
+            letter-spacing: 0.5px;
+            z-index: 10;
+        }
+        .waveform-spectrogram-row {
+            display: flex;
+            align-items: center;
+            gap: 10px;
+        }
+        .waveform-spectrogram-row .wavesurfer-container {
+            height: 50px;
+            flex: 1;
+        }
+
+        /* Full-width stems layout for MDX-Net */
+        .stems-fullwidth {
+            display: flex;
+            flex-direction: column;
+            gap: 1.5rem;
+        }
+        .stems-fullwidth .stem-card {
+            width: 100%;
+        }
+        .stems-fullwidth .spectrogram-container {
+            height: 180px;
+        }
+
+        /* AudioSep full-width visualization */
+        .classification-item .audio-visualization {
+            width: 100%;
+            flex-basis: 100%;
+            border-radius: 8px;
+        }
+        .classification-item .spectrogram-container {
+            height: 160px;
+        }
+        .classification-item .waveform-spectrogram-row .wavesurfer-container {
+            height: 50px;
+        }
+
+        /* AudioSep Progress */
+        .audiosep-progress {
+            margin-top: 0.75rem;
+            padding: 0.75rem;
+            background: rgba(245, 158, 11, 0.1);
+            border-radius: 8px;
+            border: 1px solid rgba(245, 158, 11, 0.2);
+        }
+        .audiosep-progress-header {
+            display: flex;
+            justify-content: space-between;
+            align-items: center;
+            margin-bottom: 0.5rem;
+        }
+        .audiosep-progress-status {
+            font-size: 0.75rem;
+            color: var(--accent-orange);
+            font-weight: 500;
+        }
+        .audiosep-progress-time {
+            font-size: 0.7rem;
+            color: var(--text-muted);
+            font-family: monospace;
+        }
+        .audiosep-progress-bar {
+            height: 6px;
+            background: rgba(255, 255, 255, 0.1);
+            border-radius: 3px;
+            overflow: hidden;
+        }
+        .audiosep-progress-fill {
+            height: 100%;
+            background: linear-gradient(90deg, var(--accent-orange), var(--accent-red));
+            border-radius: 3px;
+            transition: width 0.3s ease;
+        }
+        .audiosep-progress-details {
+            display: flex;
+            justify-content: space-between;
+            margin-top: 0.4rem;
+            font-size: 0.65rem;
+            color: var(--text-muted);
+        }
+
+        /* Loading */
         .loading-spinner {
             width: 20px;
             height: 20px;
@@ -568,35 +624,7 @@
             border-radius: 50%;
             animation: spin 0.8s linear infinite;
         }
-
-        @keyframes spin {
-            to { transform: rotate(360deg); }
-        }
-
-        .processing-overlay {
-            position: absolute;
-            inset: 0;
-            background: rgba(0, 0, 0, 0.7);
-            display: flex;
-            flex-direction: column;
-            align-items: center;
-            justify-content: center;
-            border-radius: 12px;
-            gap: 1rem;
-        }
-
-        .progress-ring {
-            width: 60px;
-            height: 60px;
-        }
-
-        .progress-ring-circle {
-            stroke: var(--accent-blue);
-            stroke-linecap: round;
-            transform: rotate(-90deg);
-            transform-origin: center;
-            transition: stroke-dashoffset 0.3s;
-        }
+        @keyframes spin { to { transform: rotate(360deg); } }
 
         /* Buttons */
         .btn {
@@ -612,90 +640,45 @@
             gap: 0.5rem;
         }
 
-        .btn-primary {
-            background: var(--gradient-1);
-            color: white;
-        }
+        .btn-primary { background: var(--gradient-1); color: white; }
+        .btn-primary:hover { transform: translateY(-2px); box-shadow: 0 4px 20px rgba(59, 130, 246, 0.3); }
+        .btn:disabled { opacity: 0.5; cursor: not-allowed; }
 
-        .btn-primary:hover {
-            transform: translateY(-2px);
-            box-shadow: 0 4px 20px rgba(59, 130, 246, 0.3);
-        }
+        /* Classification Results in sidebar card */
+        .classification-results { display: flex; flex-direction: column; gap: 0.5rem; }
 
-        .btn-secondary {
-            background: var(--bg-card-hover);
-            color: var(--text-primary);
-            border: 1px solid var(--border-color);
-        }
+        .class-item { display: flex; align-items: center; gap: 0.75rem; }
+        .class-rank { width: 24px; font-size: 0.75rem; color: var(--text-muted); text-align: right; }
+        .class-name { width: 180px; font-size: 0.875rem; white-space: nowrap; overflow: hidden; text-overflow: ellipsis; }
 
-        .btn-secondary:hover {
-            background: rgba(255, 255, 255, 0.1);
-        }
-
-        .btn:disabled {
-            opacity: 0.5;
-            cursor: not-allowed;
-        }
-
-        /* Tabs */
-        .tabs {
-            display: flex;
-            gap: 0.25rem;
-            background: var(--bg-card);
-            padding: 0.25rem;
-            border-radius: 10px;
-            margin-bottom: 1rem;
-        }
-
-        .tab {
+        .class-bar-container {
             flex: 1;
-            padding: 0.5rem 1rem;
-            border: none;
-            background: transparent;
-            color: var(--text-muted);
-            font-weight: 500;
-            cursor: pointer;
-            border-radius: 8px;
-            transition: all 0.2s;
+            height: 20px;
+            background: rgba(255, 255, 255, 0.05);
+            border-radius: 4px;
+            overflow: hidden;
         }
 
-        .tab:hover {
-            color: var(--text-primary);
-        }
+        .class-bar { height: 100%; background: var(--gradient-2); border-radius: 4px; transition: width 0.5s ease; }
+        .class-score { width: 50px; font-size: 0.75rem; color: var(--text-secondary); text-align: right; }
 
-        .tab.active {
-            background: var(--accent-blue);
-            color: white;
-        }
+        ::-webkit-scrollbar { width: 6px; }
+        ::-webkit-scrollbar-track { background: transparent; }
+        ::-webkit-scrollbar-thumb { background: var(--border-color); border-radius: 3px; }
+        ::-webkit-scrollbar-thumb:hover { background: rgba(255, 255, 255, 0.2); }
 
-        /* Scrollbar */
-        ::-webkit-scrollbar {
-            width: 6px;
-        }
-
-        ::-webkit-scrollbar-track {
-            background: transparent;
-        }
-
-        ::-webkit-scrollbar-thumb {
-            background: var(--border-color);
-            border-radius: 3px;
-        }
-
-        ::-webkit-scrollbar-thumb:hover {
-            background: rgba(255, 255, 255, 0.2);
-        }
-
-        /* Responsive */
         @media (max-width: 1024px) {
-            .main {
-                grid-template-columns: 1fr;
-            }
-
-            .stems-grid {
-                grid-template-columns: 1fr;
-            }
+            .main { grid-template-columns: 1fr; }
+            .stems-grid { grid-template-columns: 1fr; }
         }
+
+        .not-available {
+            text-align: center;
+            padding: 2rem;
+            color: var(--text-muted);
+        }
+
+        .not-available-icon { font-size: 3rem; margin-bottom: 1rem; opacity: 0.3; }
     </style>
 </head>
 <body>
@@ -713,7 +696,6 @@
 
     <main class="main">
         <aside class="sidebar">
-            <!-- Upload Card -->
             <div class="card">
                 <div class="card-header">
                     <div>
@@ -723,14 +705,11 @@
                 </div>
                 <div class="upload-zone" id="upload-zone">
                     <div class="upload-icon">📁</div>
-                    <div class="upload-text">
-                        Drop files here or <strong>browse</strong>
-                    </div>
+                    <div class="upload-text">Drop files here or <strong>browse</strong></div>
                     <input type="file" id="file-input" accept=".wav,.mp3,.flac,.ogg,.m4a" multiple>
                 </div>
             </div>
 
-            <!-- Files Card -->
             <div class="card">
                 <div class="card-header">
                     <div class="card-title">Audio Files</div>
@@ -746,16 +725,14 @@
         </aside>
 
         <section class="content" id="content">
-            <!-- Empty State -->
             <div class="card empty-state" id="empty-state">
                 <div class="empty-state-icon">🎧</div>
-                <div class="empty-state-text">Select an audio file to analyze</div>
+                <div style="font-size: 1.125rem; margin-bottom: 0.5rem;">Select an audio file to analyze</div>
                 <div style="color: var(--text-muted); font-size: 0.875rem;">
                     Upload audio files and click to view classification and separation options
                 </div>
             </div>
 
-            <!-- File Details (hidden by default) -->
             <div id="file-details" style="display: none;">
                 <!-- Audio Player -->
                 <div class="audio-player-large" id="main-player">
@@ -785,9 +762,7 @@
                             <div class="card-title">🧠 YAMNet Classification</div>
                             <div class="card-subtitle">521 audio categories</div>
                         </div>
-                        <button class="btn btn-primary" id="classify-btn" onclick="classifyAudio()">
-                            Classify
-                        </button>
+                        <button class="btn btn-primary" id="classify-btn" onclick="classifyAudio()">Classify</button>
                     </div>
                     <div id="classification-results">
                         <div style="color: var(--text-muted); font-size: 0.875rem; text-align: center; padding: 1rem;">
@@ -796,7 +771,7 @@
                     </div>
                 </div>
 
-                <!-- Separation Card -->
+                <!-- Separator Tabs -->
                 <div class="card">
                     <div class="card-header">
                         <div>
@@ -805,106 +780,127 @@
                         </div>
                     </div>
 
-                    <div class="separator-grid" id="separator-grid">
-                        <div class="separator-card" data-separator="demucs" onclick="selectSeparator('demucs')">
-                            <div class="separator-icon">🎸</div>
-                            <div class="separator-name">Demucs</div>
-                            <div class="separator-desc">Best quality (Meta)</div>
-                        </div>
-                        <div class="separator-card" data-separator="spleeter" onclick="selectSeparator('spleeter')">
-                            <div class="separator-icon">⚡</div>
-                            <div class="separator-name">Spleeter</div>
-                            <div class="separator-desc">Fast (Deezer)</div>
-                        </div>
-                        <div class="separator-card" data-separator="audiosep" onclick="selectSeparator('audiosep')">
-                            <div class="separator-icon">🗣️</div>
-                            <div class="separator-name">AudioSep</div>
-                            <div class="separator-desc">Text-guided</div>
-                        </div>
-                    </div>
-
-                    <div style="margin-top: 1rem; text-align: center;">
-                        <button class="btn btn-primary" id="separate-btn" onclick="separateAudio()" disabled>
-                            Separate Audio
+                    <div class="separator-tabs">
+                        <button class="separator-tab demucs active" onclick="switchTab('demucs')">
+                            <span class="tab-icon">🎸</span> Demucs
+                        </button>
+                        <button class="separator-tab spleeter" onclick="switchTab('spleeter')">
+                            <span class="tab-icon">⚡</span> Spleeter
+                        </button>
+                        <button class="separator-tab audiosep" onclick="switchTab('audiosep')">
+                            <span class="tab-icon">🗣️</span> AudioSep
+                        </button>
+                        <button class="separator-tab mdxnet" onclick="switchTab('mdxnet')">
+                            <span class="tab-icon">🎤</span> MDX-Net
                         </button>
                     </div>
-                </div>
 
-                <!-- Stems Card -->
-                <div class="card" id="stems-card" style="display: none;">
-                    <div class="card-header">
-                        <div>
-                            <div class="card-title">🎵 Separated Stems</div>
-                            <div class="card-subtitle" id="stems-info"></div>
+                    <!-- Demucs Tab -->
+                    <div class="tab-content active" id="tab-demucs">
+                        <p style="color: var(--text-secondary); font-size: 0.875rem; margin-bottom: 1rem; text-align: center;">
+                            High-quality 4-stem separation: drums, bass, vocals, other
+                        </p>
+                        <div style="text-align: center; margin-bottom: 1rem;">
+                            <button class="btn btn-primary" onclick="runSeparation('demucs')" id="demucs-btn">
+                                Separate with Demucs
+                            </button>
+                        </div>
+                        <div id="demucs-results"></div>
+                    </div>
+
+                    <!-- Spleeter Tab -->
+                    <div class="tab-content" id="tab-spleeter">
+                        <div class="not-available">
+                            <div class="not-available-icon">⚠️</div>
+                            <div style="font-size: 1rem; margin-bottom: 0.5rem;">Spleeter Not Available</div>
+                            <div style="font-size: 0.875rem;">
+                                Spleeter requires Python 3.10+ due to dependency issues.<br>
+                                Use Demucs for high-quality separation.
+                            </div>
                         </div>
                     </div>
-                    <div class="stems-grid" id="stems-grid"></div>
+
+                    <!-- AudioSep Tab -->
+                    <div class="tab-content" id="tab-audiosep">
+                        <div class="audiosep-intro">
+                            <p>AudioSep uses YAMNet classifications to separate each detected sound.</p>
+                            <p style="margin-top: 0.5rem;">First classify the audio, then separate individual sounds.</p>
+                        </div>
+                        <div id="audiosep-classifications">
+                            <div style="color: var(--text-muted); text-align: center; padding: 2rem;">
+                                Classify the audio first to see detected sounds
+                            </div>
+                        </div>
+                    </div>
+
+                    <!-- MDX-Net Tab -->
+                    <div class="tab-content" id="tab-mdxnet">
+                        <div style="color: var(--text-secondary); margin-bottom: 1rem; font-size: 0.875rem;">
+                            <strong>MDX-Net</strong> - High-quality vocal and instrumental separation using Ultimate Vocal Remover models.
+                        </div>
+                        <div style="display: flex; gap: 0.75rem; margin-bottom: 1rem; flex-wrap: wrap;">
+                            <button class="btn btn-primary" onclick="runMDXSeparation()" id="mdxnet-btn">
+                                <span>🎤</span> Separate Vocals/Instrumental
+                            </button>
+                        </div>
+                        <div id="mdxnet-results"></div>
+                    </div>
                 </div>
             </div>
         </section>
     </main>
 
     <script>
-        // State
+        // WaveSurfer is loaded via ES module - check will happen after load
+        let wavesurferReady = false;
+        function checkWavesurfer() {
+            if (typeof window.WaveSurfer !== 'undefined') {
+                wavesurferReady = true;
+                console.log('WaveSurfer.js loaded');
+                if (typeof window.SpectrogramPlugin !== 'undefined') {
+                    console.log('Spectrogram plugin loaded');
+                }
+            } else {
+                setTimeout(checkWavesurfer, 100);
+            }
+        }
+        setTimeout(checkWavesurfer, 500);
+
         let files = {};
         let selectedFileId = null;
-        let selectedSeparator = null;
-        let currentAudio = null;
+        let currentTab = 'demucs';
+        let classificationData = null;
 
-        // API Base
         const API = '';
 
-        // Initialize
         document.addEventListener('DOMContentLoaded', () => {
             loadFiles();
             setupUpload();
         });
 
-        // File Upload
         function setupUpload() {
             const zone = document.getElementById('upload-zone');
             const input = document.getElementById('file-input');
 
             zone.addEventListener('click', () => input.click());
-
-            zone.addEventListener('dragover', (e) => {
-                e.preventDefault();
-                zone.classList.add('dragover');
-            });
-
-            zone.addEventListener('dragleave', () => {
-                zone.classList.remove('dragover');
-            });
-
-            zone.addEventListener('drop', (e) => {
-                e.preventDefault();
-                zone.classList.remove('dragover');
-                handleFiles(e.dataTransfer.files);
-            });
-
-            input.addEventListener('change', (e) => {
-                handleFiles(e.target.files);
-            });
+            zone.addEventListener('dragover', (e) => { e.preventDefault(); zone.classList.add('dragover'); });
+            zone.addEventListener('dragleave', () => zone.classList.remove('dragover'));
+            zone.addEventListener('drop', (e) => { e.preventDefault(); zone.classList.remove('dragover'); handleFiles(e.dataTransfer.files); });
+            input.addEventListener('change', (e) => handleFiles(e.target.files));
         }
 
         async function handleFiles(fileList) {
             for (const file of fileList) {
                 const formData = new FormData();
                 formData.append('file', file);
-
                 try {
-                    const res = await fetch(`${API}/api/upload`, {
-                        method: 'POST',
-                        body: formData
-                    });
+                    const res = await fetch(`${API}/api/upload`, { method: 'POST', body: formData });
                     const data = await res.json();
                     if (data.success) {
                         files[data.file.id] = data.file;
                         renderFileList();
                     }
-                } catch (err) {
-                    console.error('Upload error:', err);
-                }
+                } catch (err) { console.error('Upload error:', err); }
             }
         }
 
@@ -915,9 +911,7 @@
                 files = {};
                 data.files.forEach(f => files[f.id] = f);
                 renderFileList();
-            } catch (err) {
-                console.error('Load error:', err);
-            }
+            } catch (err) { console.error('Load error:', err); }
         }
 
         function renderFileList() {
@@ -928,18 +922,12 @@
             count.textContent = `${fileArray.length} file${fileArray.length !== 1 ? 's' : ''}`;
 
             if (fileArray.length === 0) {
-                list.innerHTML = `
-                    <div class="empty-state" style="padding: 2rem;">
-                        <div style="opacity: 0.3; font-size: 2rem;">📂</div>
-                        <div style="font-size: 0.875rem; margin-top: 0.5rem;">No files uploaded</div>
-                    </div>
-                `;
+                list.innerHTML = `<div class="empty-state" style="padding: 2rem;"><div style="opacity: 0.3; font-size: 2rem;">📂</div><div style="font-size: 0.875rem; margin-top: 0.5rem;">No files uploaded</div></div>`;
                 return;
             }
 
             list.innerHTML = fileArray.map(f => `
-                <div class="file-item ${f.id === selectedFileId ? 'active' : ''}"
-                     onclick="selectFile('${f.id}')">
+                <div class="file-item ${f.id === selectedFileId ? 'active' : ''}" onclick="selectFile('${f.id}')">
                     <div class="file-icon">🎵</div>
                     <div class="file-info">
                         <div class="file-name">${f.filename}</div>
@@ -954,38 +942,31 @@
             try {
                 await fetch(`${API}/api/files/${id}`, { method: 'DELETE' });
                 delete files[id];
-                if (selectedFileId === id) {
-                    selectedFileId = null;
-                    showEmptyState();
-                }
+                if (selectedFileId === id) { selectedFileId = null; showEmptyState(); }
                 renderFileList();
-            } catch (err) {
-                console.error('Delete error:', err);
-            }
+            } catch (err) { console.error('Delete error:', err); }
         }
 
         async function selectFile(id) {
             selectedFileId = id;
+            classificationData = null;
             renderFileList();
             showFileDetails();
 
-            // Load existing results
             try {
                 const res = await fetch(`${API}/api/results/${id}`);
                 const data = await res.json();
-
                 if (data.classification) {
+                    classificationData = data.classification;
                     renderClassification(data.classification);
+                    renderAudioSepClassifications(data.classification.top_classes);
                 }
-
-                if (data.separations && data.separations.length > 0) {
-                    // Show most recent separation
-                    const latest = data.separations[data.separations.length - 1];
-                    renderStems(latest);
+                if (data.separations) {
+                    data.separations.forEach(sep => {
+                        if (sep.separator === 'demucs') renderStems(sep, 'demucs-results');
+                    });
                 }
-            } catch (err) {
-                console.error('Results error:', err);
-            }
+            } catch (err) { console.error('Results error:', err); }
         }
 
         function showEmptyState() {
@@ -999,81 +980,60 @@
 
             const file = files[selectedFileId];
             document.getElementById('player-title').textContent = file.filename;
-            document.getElementById('player-meta').textContent =
-                `${formatDuration(file.duration)} • ${file.sample_rate ? (file.sample_rate / 1000).toFixed(1) + 'kHz' : ''}`;
+            document.getElementById('player-meta').textContent = `${formatDuration(file.duration)} • ${file.sample_rate ? (file.sample_rate / 1000).toFixed(1) + 'kHz' : ''}`;
 
-            // Set audio source
             const audio = document.getElementById('main-audio');
             audio.src = file.path;
-            currentAudio = audio;
-
-            // Generate waveform visualization
             generateWaveform();
 
-            // Reset UI
-            document.getElementById('classification-results').innerHTML = `
-                <div style="color: var(--text-muted); font-size: 0.875rem; text-align: center; padding: 1rem;">
-                    Click "Classify" to analyze audio content
-                </div>
-            `;
-            document.getElementById('stems-card').style.display = 'none';
-            selectedSeparator = null;
-            updateSeparatorSelection();
+            document.getElementById('classification-results').innerHTML = `<div style="color: var(--text-muted); font-size: 0.875rem; text-align: center; padding: 1rem;">Click "Classify" to analyze audio content</div>`;
+            document.getElementById('demucs-results').innerHTML = '';
+            document.getElementById('mdxnet-results').innerHTML = '';
+            document.getElementById('audiosep-classifications').innerHTML = `<div style="color: var(--text-muted); text-align: center; padding: 2rem;">Classify the audio first to see detected sounds</div>`;
         }
 
         function generateWaveform() {
             const container = document.getElementById('waveform');
-            const bars = 60;
             let html = '';
-            for (let i = 0; i < bars; i++) {
+            for (let i = 0; i < 60; i++) {
                 const height = 20 + Math.random() * 60;
                 html += `<div class="waveform-bar" style="height: ${height}%"></div>`;
             }
             container.innerHTML = html;
         }
 
+        // Tabs
+        function switchTab(tab) {
+            currentTab = tab;
+            document.querySelectorAll('.separator-tab').forEach(t => t.classList.remove('active'));
+            document.querySelector(`.separator-tab.${tab}`).classList.add('active');
+            document.querySelectorAll('.tab-content').forEach(c => c.classList.remove('active'));
+            document.getElementById(`tab-${tab}`).classList.add('active');
+        }
+
         // Audio Player
         function togglePlay() {
             const audio = document.getElementById('main-audio');
             const btn = document.getElementById('play-btn');
-
-            if (audio.paused) {
-                audio.play();
-                btn.innerHTML = '⏸';
-            } else {
-                audio.pause();
-                btn.innerHTML = '▶';
-            }
+            if (audio.paused) { audio.play(); btn.innerHTML = '⏸'; }
+            else { audio.pause(); btn.innerHTML = '▶'; }
         }
 
-        // Set up audio event listeners
         const mainAudio = document.getElementById('main-audio');
-
         mainAudio.addEventListener('timeupdate', function() {
             const progress = (this.currentTime / this.duration) * 100;
             document.getElementById('progress-fill').style.width = progress + '%';
-            document.getElementById('time-display').textContent =
-                `${formatTime(this.currentTime)} / ${formatTime(this.duration)}`;
+            document.getElementById('time-display').textContent = `${formatTime(this.currentTime)} / ${formatTime(this.duration)}`;
         });
-
-        mainAudio.addEventListener('ended', function() {
-            document.getElementById('play-btn').innerHTML = '▶';
-        });
-
-        mainAudio.addEventListener('play', function() {
-            document.getElementById('play-btn').innerHTML = '⏸';
-        });
-
-        mainAudio.addEventListener('pause', function() {
-            document.getElementById('play-btn').innerHTML = '▶';
-        });
+        mainAudio.addEventListener('ended', () => document.getElementById('play-btn').innerHTML = '▶');
+        mainAudio.addEventListener('play', () => document.getElementById('play-btn').innerHTML = '⏸');
+        mainAudio.addEventListener('pause', () => document.getElementById('play-btn').innerHTML = '▶');
 
         function seek(e) {
             const bar = document.getElementById('progress-bar');
             const rect = bar.getBoundingClientRect();
             const pos = (e.clientX - rect.left) / rect.width;
-            const audio = document.getElementById('main-audio');
-            audio.currentTime = pos * audio.duration;
+            document.getElementById('main-audio').currentTime = pos * mainAudio.duration;
         }
 
         // Classification
@@ -1085,21 +1045,17 @@
             btn.innerHTML = '<div class="loading-spinner"></div> Classifying...';
 
             const results = document.getElementById('classification-results');
-            results.innerHTML = `
-                <div style="text-align: center; padding: 2rem;">
-                    <div class="loading-spinner" style="margin: 0 auto;"></div>
-                    <div style="margin-top: 1rem; color: var(--text-muted);">Analyzing audio with YAMNet...</div>
-                </div>
-            `;
+            results.innerHTML = `<div style="text-align: center; padding: 2rem;"><div class="loading-spinner" style="margin: 0 auto;"></div><div style="margin-top: 1rem; color: var(--text-muted);">Analyzing audio with YAMNet...</div></div>`;
 
             try {
                 const res = await fetch(`${API}/api/classify/${selectedFileId}`, { method: 'POST' });
                 const data = await res.json();
 
-                // Poll for results
                 await pollJob(data.job_id, (status) => {
                     if (status.status === 'completed') {
+                        classificationData = status.result;
                         renderClassification(status.result);
+                        renderAudioSepClassifications(status.result.top_classes);
                     } else if (status.status === 'error') {
                         results.innerHTML = `<div style="color: var(--accent-red); padding: 1rem;">${status.message}</div>`;
                     }
@@ -1135,85 +1091,579 @@
             `;
         }
 
-        // Separation
-        function selectSeparator(name) {
-            selectedSeparator = name;
-            updateSeparatorSelection();
-            document.getElementById('separate-btn').disabled = false;
+        function renderAudioSepClassifications(classes) {
+            const container = document.getElementById('audiosep-classifications');
+            const topClasses = classes.slice(0, 15);
+
+            container.innerHTML = `
+                <div class="classification-list">
+                    ${topClasses.map((c, i) => `
+                        <div class="classification-item" id="audiosep-item-${i}">
+                            <div class="classification-info">
+                                <div class="classification-name">${c.name}</div>
+                                <div class="classification-score-bar">
+                                    <div class="classification-score-fill" style="width: ${c.score * 100}%"></div>
+                                </div>
+                                <div class="classification-score">${(c.score * 100).toFixed(1)}% confidence</div>
+                            </div>
+                            <div class="classification-actions">
+                                <button class="separate-btn" onclick="separateWithAudioSep('${c.name}', ${i})">
+                                    Separate
+                                </button>
+                            </div>
+                        </div>
+                    `).join('')}
+                </div>
+                <div style="margin-top: 1rem; text-align: center;">
+                    <button class="btn btn-primary" onclick="separateAllClassifications()" id="separate-all-btn">
+                        Separate All Classifications
+                    </button>
+                </div>
+            `;
         }
 
-        function updateSeparatorSelection() {
-            document.querySelectorAll('.separator-card').forEach(card => {
-                card.classList.toggle('active', card.dataset.separator === selectedSeparator);
-            });
-        }
+        async function separateWithAudioSep(className, index) {
+            if (!selectedFileId) return;
 
-        async function separateAudio() {
-            if (!selectedFileId || !selectedSeparator) return;
-
-            const btn = document.getElementById('separate-btn');
+            const item = document.getElementById(`audiosep-item-${index}`);
+            const btn = item.querySelector('.separate-btn');
             btn.disabled = true;
-            btn.innerHTML = '<div class="loading-spinner"></div> Separating...';
+            btn.innerHTML = '...';
 
-            const card = document.querySelector(`[data-separator="${selectedSeparator}"]`);
-            card.classList.add('processing');
+            // Get audio duration for time estimate
+            const file = files[selectedFileId];
+            const audioDuration = file?.duration || 10;
+            const estimatedTime = Math.max(2, audioDuration * 0.3); // Rough estimate
+
+            // Add progress bar
+            let progressDiv = item.querySelector('.audiosep-progress');
+            if (!progressDiv) {
+                progressDiv = document.createElement('div');
+                progressDiv.className = 'audiosep-progress';
+                progressDiv.id = `progress-${index}`;
+                item.appendChild(progressDiv);
+            }
+
+            const startTime = Date.now();
+
+            function updateProgress(progress, message, elapsed) {
+                const estTotal = progress > 0.1 ? elapsed / progress : estimatedTime;
+                const remaining = Math.max(0, estTotal - elapsed);
+                progressDiv.innerHTML = `
+                    <div class="audiosep-progress-header">
+                        <span class="audiosep-progress-status">${message}</span>
+                        <span class="audiosep-progress-time">${elapsed.toFixed(1)}s / ~${estTotal.toFixed(1)}s</span>
+                    </div>
+                    <div class="audiosep-progress-bar">
+                        <div class="audiosep-progress-fill" style="width: ${progress * 100}%"></div>
+                    </div>
+                    <div class="audiosep-progress-details">
+                        <span>${(progress * 100).toFixed(0)}% complete</span>
+                        <span>~${remaining.toFixed(1)}s remaining</span>
+                    </div>
+                `;
+            }
+
+            updateProgress(0, 'Starting separation...', 0);
 
             try {
-                const res = await fetch(`${API}/api/separate/${selectedFileId}?separator=${selectedSeparator}`, {
-                    method: 'POST'
-                });
+                const res = await fetch(`${API}/api/separate/${selectedFileId}?separator=audiosep&prompt=${encodeURIComponent(className)}`, { method: 'POST' });
                 const data = await res.json();
 
-                // Poll for results
-                await pollJob(data.job_id, (status) => {
+                // Poll with progress updates
+                await pollJobWithProgress(data.job_id, (status) => {
+                    const elapsed = (Date.now() - startTime) / 1000;
+
                     if (status.status === 'completed') {
-                        renderStems(status.result);
+                        updateProgress(1.0, 'Complete!', elapsed);
+                        const stemPath = Object.values(status.result.stems)[0];
+
+                        // Replace progress with player after short delay
+                        setTimeout(() => {
+                            progressDiv.remove();
+
+                            // Add player with spectrogram to the item
+                            let playerHtml = item.querySelector('.audio-visualization');
+                            if (!playerHtml) {
+                                // Add class for full-width visualization layout
+                                item.classList.add('has-visualization');
+
+                                const wavesurferId = `wavesurfer-${index}-${Date.now()}`;
+                                const spectrogramId = `spectrogram-${index}-${Date.now()}`;
+                                item.insertAdjacentHTML('beforeend', `
+                                    <div class="audio-visualization">
+                                        <div class="waveform-spectrogram-row">
+                                            <button class="stem-play-btn" id="play-btn-${wavesurferId}">▶</button>
+                                            <div class="wavesurfer-container" id="${wavesurferId}"></div>
+                                            <a class="stem-download" href="${stemPath}" download title="Download">⬇</a>
+                                        </div>
+                                        <div class="spectrogram-container" id="${spectrogramId}">
+                                            <span class="spectrogram-label">Spectrogram</span>
+                                        </div>
+                                    </div>
+                                `);
+
+                                // Initialize wavesurfer with spectrogram after DOM settles
+                                requestAnimationFrame(() => {
+                                    setTimeout(() => initWavesurferWithSpectrogram(wavesurferId, spectrogramId, stemPath), 100);
+                                });
+                            }
+                            btn.innerHTML = '✓ ' + elapsed.toFixed(1) + 's';
+                            btn.style.background = 'var(--accent-green)';
+                        }, 500);
                     } else if (status.status === 'error') {
-                        alert('Separation error: ' + status.message);
+                        progressDiv.innerHTML = `<div style="color: var(--accent-red); font-size: 0.75rem;">${status.message}</div>`;
+                        btn.innerHTML = 'Error';
+                        btn.style.background = 'var(--accent-red)';
+                    } else {
+                        // Update progress
+                        updateProgress(status.progress || 0, status.message || 'Processing...', elapsed);
                     }
                 });
             } catch (err) {
-                alert('Error: ' + err.message);
+                progressDiv.innerHTML = `<div style="color: var(--accent-red); font-size: 0.75rem;">Error: ${err.message}</div>`;
+                btn.innerHTML = 'Error';
+                btn.style.background = 'var(--accent-red)';
+                console.error(err);
+            }
+        }
+
+        // Poll job with progress callback on every poll
+        async function pollJobWithProgress(jobId, callback) {
+            if (!jobId || jobId === 'undefined') {
+                console.error('Invalid job ID:', jobId);
+                return;
+            }
+
+            const maxAttempts = 300; // 5 minutes max
+            let attempts = 0;
+
+            while (attempts < maxAttempts) {
+                try {
+                    const res = await fetch(`${API}/api/status/${jobId}`);
+                    const status = await res.json();
+
+                    // Call callback on every status update
+                    callback(status);
+
+                    if (status.status === 'completed' || status.status === 'error') {
+                        return;
+                    }
+
+                    await new Promise(r => setTimeout(r, 500)); // Poll every 500ms
+                    attempts++;
+                } catch (err) {
+                    console.error('Poll error:', err);
+                    break;
+                }
+            }
+        }
+
+        async function separateAllClassifications() {
+            const btn = document.getElementById('separate-all-btn');
+            btn.disabled = true;
+            btn.innerHTML = '<div class="loading-spinner"></div> Separating...';
+
+            const buttons = document.querySelectorAll('.classification-item .separate-btn:not(:disabled)');
+            for (let i = 0; i < buttons.length; i++) {
+                buttons[i].click();
+                await new Promise(r => setTimeout(r, 500)); // Stagger requests
             }
 
             btn.disabled = false;
-            btn.innerHTML = 'Separate Audio';
-            card.classList.remove('processing');
+            btn.innerHTML = 'Separate All Classifications';
         }
 
-        function renderStems(result) {
-            const card = document.getElementById('stems-card');
-            const grid = document.getElementById('stems-grid');
-            const info = document.getElementById('stems-info');
+        // Wavesurfer instances for AudioSep
+        const wavesurferInstances = {};
+        let currentWavesurfer = null;
 
-            card.style.display = 'block';
-            info.textContent = `${result.separator} • ${result.processing_time.toFixed(2)}s`;
+        function initWavesurfer(containerId, audioPath) {
+            const container = document.getElementById(containerId);
+            if (!container) {
+                console.error('Wavesurfer container not found:', containerId);
+                return;
+            }
 
-            const stemColors = {
-                drums: '#ef4444',
-                bass: '#8b5cf6',
-                vocals: '#10b981',
-                other: '#f59e0b'
-            };
+            const playBtn = document.getElementById(`play-btn-${containerId}`);
 
-            grid.innerHTML = Object.entries(result.stems).map(([name, path]) => `
-                <div class="stem-card">
-                    <div class="stem-header">
-                        <div class="stem-name">${name}</div>
-                        <div class="stem-badge" style="background: ${stemColors[name] || '#3b82f6'}">${result.separator}</div>
-                    </div>
-                    <div class="stem-player">
-                        <button class="stem-play-btn" onclick="playStem('${path}', this)">▶</button>
-                        <div class="stem-waveform">
-                            <div class="waveform-bars" style="height: 100%; padding: 4px;">
-                                ${generateMiniWaveform(stemColors[name] || '#3b82f6')}
+            // Check if WaveSurfer is available
+            if (typeof window.WaveSurfer === 'undefined') {
+                console.error('WaveSurfer not loaded, using fallback');
+                showFallbackPlayer(container, audioPath, playBtn);
+                return;
+            }
+
+            // Show loading indicator
+            container.innerHTML = '<div style="color:#f59e0b;font-size:10px;padding:8px;">Loading...</div>';
+
+            try {
+                const wavesurfer = window.WaveSurfer.create({
+                    container: container,
+                    waveColor: '#f59e0b',
+                    progressColor: '#ef4444',
+                    cursorColor: '#ffffff',
+                    cursorWidth: 2,
+                    barWidth: 3,
+                    barGap: 2,
+                    barRadius: 3,
+                    height: 48,
+                    normalize: true,
+                    url: audioPath,
+                });
+                wavesurferInstances[containerId] = wavesurfer;
+
+                if (playBtn) {
+                    playBtn.addEventListener('click', () => {
+                        if (currentWavesurfer && currentWavesurfer !== wavesurfer) {
+                            currentWavesurfer.pause();
+                        }
+                        wavesurfer.playPause();
+                        currentWavesurfer = wavesurfer;
+                    });
+                }
+
+                wavesurfer.on('play', () => { if(playBtn) playBtn.innerHTML = '⏸'; });
+                wavesurfer.on('pause', () => { if(playBtn) playBtn.innerHTML = '▶'; });
+                wavesurfer.on('finish', () => { if(playBtn) playBtn.innerHTML = '▶'; currentWavesurfer = null; });
+                wavesurfer.on('ready', () => { console.log('Wavesurfer ready:', containerId); });
+                wavesurfer.on('error', (e) => {
+                    console.error('Wavesurfer error:', e);
+                    showFallbackPlayer(container, audioPath, playBtn);
+                });
+
+                // Fallback timeout
+                setTimeout(() => {
+                    if (container.innerHTML.includes('Loading')) {
+                        console.warn('Wavesurfer timeout');
+                        showFallbackPlayer(container, audioPath, playBtn);
+                    }
+                }, 8000);
+
+            } catch (err) {
+                console.error('Wavesurfer init failed:', err);
+                showFallbackPlayer(container, audioPath, playBtn);
+            }
+        }
+
+        function initWavesurferWithSpectrogram(waveContainerId, spectrogramContainerId, audioPath) {
+            const waveContainer = document.getElementById(waveContainerId);
+            const spectrogramContainer = document.getElementById(spectrogramContainerId);
+
+            if (!waveContainer) {
+                console.error('Waveform container not found:', waveContainerId);
+                return;
+            }
+
+            const playBtn = document.getElementById(`play-btn-${waveContainerId}`);
+
+            // Check if WaveSurfer and Spectrogram plugin are available
+            if (typeof window.WaveSurfer === 'undefined') {
+                console.error('WaveSurfer not loaded');
+                showFallbackPlayer(waveContainer, audioPath, playBtn);
+                return;
+            }
+
+            // Show loading indicator
+            waveContainer.innerHTML = '<div style="color:#f59e0b;font-size:10px;padding:8px;">Loading...</div>';
+
+            try {
+                // Create spectrogram plugin if container exists
+                const plugins = [];
+                let spectrogramPlugin = null;
+                if (spectrogramContainer && typeof window.SpectrogramPlugin !== 'undefined') {
+                    spectrogramPlugin = window.SpectrogramPlugin.create({
+                        container: spectrogramContainer,
+                        labels: true,
+                        height: 150,
+                        splitChannels: false,
+                        fftSamples: 512,
+                        frequencyMin: 0,
+                        frequencyMax: 8000,
+                        colorMap: 'roseus',
+                    });
+                    plugins.push(spectrogramPlugin);
+                }
+
+                const wavesurfer = window.WaveSurfer.create({
+                    container: waveContainer,
+                    waveColor: '#f59e0b',
+                    progressColor: '#ef4444',
+                    cursorColor: '#ffffff',
+                    cursorWidth: 2,
+                    barWidth: 3,
+                    barGap: 2,
+                    barRadius: 3,
+                    height: 40,
+                    normalize: true,
+                    url: audioPath,
+                    plugins: plugins,
+                });
+
+                wavesurferInstances[waveContainerId] = wavesurfer;
+
+                if (playBtn) {
+                    playBtn.addEventListener('click', () => {
+                        if (currentWavesurfer && currentWavesurfer !== wavesurfer) {
+                            currentWavesurfer.pause();
+                        }
+                        wavesurfer.playPause();
+                        currentWavesurfer = wavesurfer;
+                    });
+                }
+
+                wavesurfer.on('play', () => {
+                    if(playBtn) playBtn.innerHTML = '⏸';
+                    // Ensure spectrogram stays visible during playback
+                    if (spectrogramContainer) {
+                        spectrogramContainer.style.visibility = 'visible';
+                        spectrogramContainer.style.opacity = '1';
+                    }
+                });
+                wavesurfer.on('pause', () => { if(playBtn) playBtn.innerHTML = '▶'; });
+                wavesurfer.on('finish', () => { if(playBtn) playBtn.innerHTML = '▶'; currentWavesurfer = null; });
+                wavesurfer.on('ready', () => {
+                    console.log('Wavesurfer with spectrogram ready:', waveContainerId);
+                    // Ensure spectrogram container is visible
+                    if (spectrogramContainer) {
+                        spectrogramContainer.style.visibility = 'visible';
+                        spectrogramContainer.style.opacity = '1';
+                    }
+                });
+                wavesurfer.on('error', (e) => {
+                    console.error('Wavesurfer error:', e);
+                    showFallbackPlayer(waveContainer, audioPath, playBtn);
+                });
+
+                // Fallback timeout
+                setTimeout(() => {
+                    if (waveContainer.innerHTML.includes('Loading')) {
+                        console.warn('Wavesurfer timeout');
+                        showFallbackPlayer(waveContainer, audioPath, playBtn);
+                    }
+                }, 10000);
+
+            } catch (err) {
+                console.error('Wavesurfer with spectrogram init failed:', err);
+                showFallbackPlayer(waveContainer, audioPath, playBtn);
+            }
+        }
+
+        function showFallbackPlayer(container, audioPath, playBtn, color = '#f59e0b') {
+            container.innerHTML = `
+                <div style="display:flex;align-items:center;height:100%;padding:4px;gap:2px;">
+                    ${generateMiniWaveform(color)}
+                </div>
+                <audio src="${audioPath}" style="display:none;"></audio>
+            `;
+
+            const audio = container.querySelector('audio');
+            if (playBtn && audio) {
+                playBtn.onclick = () => {
+                    if (audio.paused) { audio.play(); playBtn.innerHTML = '⏸'; }
+                    else { audio.pause(); playBtn.innerHTML = '▶'; }
+                };
+                audio.onended = () => { playBtn.innerHTML = '▶'; };
+                audio.onpause = () => { playBtn.innerHTML = '▶'; };
+                audio.onplay = () => { playBtn.innerHTML = '⏸'; };
+            }
+        }
+
+        // Demucs Separation
+        async function runSeparation(separator) {
+            if (!selectedFileId) return;
+
+            const btn = document.getElementById(`${separator}-btn`);
+            btn.disabled = true;
+            btn.innerHTML = '<div class="loading-spinner"></div> Separating...';
+
+            try {
+                const res = await fetch(`${API}/api/separate/${selectedFileId}?separator=${separator}`, { method: 'POST' });
+                const data = await res.json();
+
+                await pollJob(data.job_id, (status) => {
+                    if (status.status === 'completed') {
+                        renderStems(status.result, `${separator}-results`);
+                    } else if (status.status === 'error') {
+                        document.getElementById(`${separator}-results`).innerHTML = `<div style="color: var(--accent-red); padding: 1rem;">${status.message}</div>`;
+                    }
+                });
+            } catch (err) {
+                document.getElementById(`${separator}-results`).innerHTML = `<div style="color: var(--accent-red); padding: 1rem;">Error: ${err.message}</div>`;
+            }
+
+            btn.disabled = false;
+            btn.innerHTML = `Separate with ${separator.charAt(0).toUpperCase() + separator.slice(1)}`;
+        }
+
+        // MDX-Net Separation
+        async function runMDXSeparation() {
+            if (!selectedFileId) return;
+
+            const btn = document.getElementById('mdxnet-btn');
+            btn.disabled = true;
+            btn.innerHTML = '<div class="loading-spinner"></div> Separating...';
+
+            try {
+                const res = await fetch(`${API}/api/separate/${selectedFileId}?separator=mdxnet`, { method: 'POST' });
+                const data = await res.json();
+
+                await pollJob(data.job_id, (status) => {
+                    if (status.status === 'completed') {
+                        renderMDXStems(status.result, 'mdxnet-results');
+                    } else if (status.status === 'error') {
+                        document.getElementById('mdxnet-results').innerHTML = `<div style="color: var(--accent-red); padding: 1rem;">${status.message}</div>`;
+                    }
+                });
+            } catch (err) {
+                document.getElementById('mdxnet-results').innerHTML = `<div style="color: var(--accent-red); padding: 1rem;">Error: ${err.message}</div>`;
+            }
+
+            btn.disabled = false;
+            btn.innerHTML = '<span>🎤</span> Separate Vocals/Instrumental';
+        }
+
+        function renderMDXStems(result, containerId) {
+            const grid = document.getElementById(containerId);
+            const stemColors = { vocals: '#10b981', instrumental: '#3b82f6' };
+
+            grid.innerHTML = `
+                <div class="stems-fullwidth">
+                    ${Object.entries(result.stems).map(([name, path], idx) => {
+                        const wsId = `mdx-ws-${name}-${Date.now()}`;
+                        const spectrogramId = `mdx-spec-${name}-${Date.now()}`;
+                        return `
+                        <div class="stem-card" data-ws-id="${wsId}" data-spec-id="${spectrogramId}" data-path="${path}" data-color="${stemColors[name] || '#3b82f6'}">
+                            <div class="stem-header">
+                                <div class="stem-name">${name}</div>
+                                <div class="stem-badge" style="background: ${stemColors[name] || '#3b82f6'}">MDX-Net</div>
+                            </div>
+                            <div class="audio-visualization" style="margin-top: 8px;">
+                                <div class="waveform-spectrogram-row">
+                                    <button class="stem-play-btn" id="play-btn-${wsId}">▶</button>
+                                    <div class="wavesurfer-container" id="${wsId}"></div>
+                                    <a class="stem-download" href="${path}" download title="Download">⬇</a>
+                                </div>
+                                <div class="spectrogram-container" id="${spectrogramId}">
+                                    <span class="spectrogram-label">Spectrogram</span>
+                                </div>
                             </div>
                         </div>
-                        <a class="stem-download" href="${path}" download title="Download">⬇</a>
-                    </div>
-                    <audio id="audio-${name}" src="${path}" style="display: none;"></audio>
+                    `}).join('')}
                 </div>
-            `).join('');
+                <div style="margin-top: 1rem; font-size: 0.75rem; color: var(--text-muted); text-align: center;">
+                    Separated in ${result.processing_time.toFixed(2)}s using MDX-Net
+                </div>
+            `;
+
+            // Initialize wavesurfers with spectrograms for each stem
+            setTimeout(() => {
+                document.querySelectorAll(`#${containerId} .stem-card`).forEach(card => {
+                    const wsId = card.dataset.wsId;
+                    const specId = card.dataset.specId;
+                    const path = card.dataset.path;
+                    initWavesurferWithSpectrogram(wsId, specId, path);
+                });
+            }, 100);
+        }
+
+        function renderStems(result, containerId) {
+            const grid = document.getElementById(containerId);
+            const stemColors = { drums: '#ef4444', bass: '#8b5cf6', vocals: '#10b981', other: '#f59e0b' };
+
+            grid.innerHTML = `
+                <div class="stems-grid">
+                    ${Object.entries(result.stems).map(([name, path], idx) => {
+                        const wsId = `stem-ws-${containerId}-${name}-${Date.now()}`;
+                        return `
+                        <div class="stem-card" data-ws-id="${wsId}" data-path="${path}" data-color="${stemColors[name] || '#3b82f6'}">
+                            <div class="stem-header">
+                                <div class="stem-name">${name}</div>
+                                <div class="stem-badge" style="background: ${stemColors[name] || '#3b82f6'}">${result.separator}</div>
+                            </div>
+                            <div class="stem-player">
+                                <button class="stem-play-btn" id="play-btn-${wsId}">▶</button>
+                                <div class="wavesurfer-container" id="${wsId}" style="height: 32px;"></div>
+                                <a class="stem-download" href="${path}" download title="Download">⬇</a>
+                            </div>
+                        </div>
+                    `}).join('')}
+                </div>
+                <div style="margin-top: 1rem; font-size: 0.75rem; color: var(--text-muted); text-align: center;">
+                    Separated in ${result.processing_time.toFixed(2)}s
+                </div>
+            `;
+
+            // Initialize wavesurfers for each stem
+            setTimeout(() => {
+                document.querySelectorAll(`#${containerId} .stem-card`).forEach(card => {
+                    const wsId = card.dataset.wsId;
+                    const path = card.dataset.path;
+                    const color = card.dataset.color;
+                    initStemWavesurfer(wsId, path, color);
+                });
+            }, 100);
+        }
+
+        function initStemWavesurfer(containerId, audioPath, color) {
+            const container = document.getElementById(containerId);
+            if (!container) return;
+
+            const playBtn = document.getElementById(`play-btn-${containerId}`);
+
+            // Check if WaveSurfer is available
+            if (typeof window.WaveSurfer === 'undefined') {
+                showFallbackPlayer(container, audioPath, playBtn, color);
+                return;
+            }
+
+            container.innerHTML = '<div style="color:' + color + ';font-size:9px;padding:4px;">Loading...</div>';
+
+            try {
+                const wavesurfer = window.WaveSurfer.create({
+                    container: container,
+                    waveColor: color,
+                    progressColor: '#ffffff',
+                    cursorColor: '#ffffff',
+                    cursorWidth: 1,
+                    barWidth: 2,
+                    barGap: 1,
+                    barRadius: 2,
+                    height: 32,
+                    normalize: true,
+                    url: audioPath,
+                });
+                wavesurferInstances[containerId] = wavesurfer;
+
+                if (playBtn) {
+                    playBtn.addEventListener('click', () => {
+                        if (currentWavesurfer && currentWavesurfer !== wavesurfer) {
+                            currentWavesurfer.pause();
+                        }
+                        wavesurfer.playPause();
+                        currentWavesurfer = wavesurfer;
+                    });
+                }
+
+                wavesurfer.on('play', () => { if(playBtn) playBtn.innerHTML = '⏸'; });
+                wavesurfer.on('pause', () => { if(playBtn) playBtn.innerHTML = '▶'; });
+                wavesurfer.on('finish', () => { if(playBtn) playBtn.innerHTML = '▶'; currentWavesurfer = null; });
+                wavesurfer.on('ready', () => { console.log('Stem ready:', containerId); });
+                wavesurfer.on('error', (e) => {
+                    console.error('Stem error:', e);
+                    showFallbackPlayer(container, audioPath, playBtn, color);
+                });
+
+                setTimeout(() => {
+                    if (container.innerHTML.includes('Loading')) {
+                        showFallbackPlayer(container, audioPath, playBtn, color);
+                    }
+                }, 8000);
+
+            } catch (err) {
+                console.error('Stem wavesurfer init failed:', err);
+                showFallbackPlayer(container, audioPath, playBtn, color);
+            }
         }
 
         function generateMiniWaveform(color) {
@@ -1225,48 +1675,23 @@
             return html;
         }
 
-        let currentStemAudio = null;
-        let currentStemBtn = null;
-
+        // Legacy playStem function (kept for backwards compat, but wavesurfer used now)
         function playStem(path, btn) {
-            // Find audio element for this button
-            const audio = btn.closest('.stem-card').querySelector('audio');
-
-            // If clicking on same audio that's playing, just pause it
-            if (currentStemAudio === audio) {
-                if (audio.paused) {
-                    audio.play();
-                    btn.innerHTML = '⏸';
-                } else {
-                    audio.pause();
-                    btn.innerHTML = '▶';
-                }
-                return;
+            const card = btn.closest('.stem-card');
+            const wsId = card?.dataset?.wsId;
+            if (wsId && wavesurferInstances[wsId]) {
+                wavesurferInstances[wsId].playPause();
             }
-
-            // Stop previous audio if different
-            if (currentStemAudio && currentStemBtn) {
-                currentStemAudio.pause();
-                currentStemAudio.currentTime = 0;
-                currentStemBtn.innerHTML = '▶';
-            }
-
-            // Play new audio
-            audio.play();
-            btn.innerHTML = '⏸';
-            currentStemAudio = audio;
-            currentStemBtn = btn;
-
-            audio.onended = () => {
-                btn.innerHTML = '▶';
-                currentStemAudio = null;
-                currentStemBtn = null;
-            };
         }
 
         // Job Polling
         async function pollJob(jobId, callback) {
-            const maxAttempts = 120;  // 2 minutes max
+            if (!jobId || jobId === 'undefined') {
+                console.error('Invalid job ID:', jobId);
+                return;
+            }
+
+            const maxAttempts = 120;
             let attempts = 0;
 
             while (attempts < maxAttempts) {
@@ -1281,10 +1706,7 @@
 
                     await new Promise(r => setTimeout(r, 1000));
                     attempts++;
-                } catch (err) {
-                    console.error('Poll error:', err);
-                    break;
-                }
+                } catch (err) { console.error('Poll error:', err); break; }
             }
         }
 
@@ -1307,10 +1729,7 @@
             if (!bytes) return '0 B';
             const units = ['B', 'KB', 'MB', 'GB'];
             let i = 0;
-            while (bytes >= 1024 && i < units.length - 1) {
-                bytes /= 1024;
-                i++;
-            }
+            while (bytes >= 1024 && i < units.length - 1) { bytes /= 1024; i++; }
             return `${bytes.toFixed(1)} ${units[i]}`;
         }
     </script>

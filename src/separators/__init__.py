@@ -5,6 +5,7 @@ Provides wrappers for various source separation tools:
 - Demucs: High-quality music separation
 - Spleeter: Fast separation (good for edge deployment)
 - AudioSep: Language-guided separation
+- MDX-Net: High-quality vocal/instrumental separation
 """
 
 from src.separators.base import BaseSeparator, SeparationResult
@@ -14,11 +15,18 @@ from src.separators.spleeter import SpleeterSeparator
 # AudioSep is optional (requires extra dependencies)
 try:
     from src.separators.audiosep import AudioSepSeparator
-
     AUDIOSEP_AVAILABLE = True
 except ImportError:
     AUDIOSEP_AVAILABLE = False
     AudioSepSeparator = None  # type: ignore
+
+# MDX-Net via python-audio-separator
+try:
+    from src.separators.mdxnet import MDXNetSeparator
+    MDXNET_AVAILABLE = True
+except ImportError:
+    MDXNET_AVAILABLE = False
+    MDXNetSeparator = None  # type: ignore
 
 
 def get_separator(name: str, **kwargs) -> BaseSeparator:
@@ -26,7 +34,7 @@ def get_separator(name: str, **kwargs) -> BaseSeparator:
     Factory function to get a separator by name.
 
     Args:
-        name: Separator name ('demucs', 'spleeter', 'audiosep')
+        name: Separator name ('demucs', 'spleeter', 'audiosep', 'mdxnet')
         **kwargs: Additional arguments for the separator
 
     Returns:
@@ -39,6 +47,9 @@ def get_separator(name: str, **kwargs) -> BaseSeparator:
 
     if AUDIOSEP_AVAILABLE:
         separators["audiosep"] = AudioSepSeparator
+
+    if MDXNET_AVAILABLE:
+        separators["mdxnet"] = MDXNetSeparator
 
     name = name.lower()
     if name not in separators:
@@ -54,6 +65,8 @@ __all__ = [
     "DemucsSeparator",
     "SpleeterSeparator",
     "AudioSepSeparator",
+    "MDXNetSeparator",
     "get_separator",
     "AUDIOSEP_AVAILABLE",
+    "MDXNET_AVAILABLE",
 ]

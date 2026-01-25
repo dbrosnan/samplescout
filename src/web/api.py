@@ -12,6 +12,8 @@ from datetime import datetime
 from pathlib import Path
 from typing import Dict, List, Optional
 
+# Note: Separation runs in subprocess to avoid torch import conflicts
+
 import numpy as np
 from fastapi import FastAPI, File, HTTPException, UploadFile, BackgroundTasks
 from fastapi.middleware.cors import CORSMiddleware
@@ -251,95 +253,169 @@ def run_classification(file_id: str, job_id: str):
 async def separate_audio(
     file_id: str,
     separator: str = "demucs",
+    prompt: Optional[str] = None,
     background_tasks: BackgroundTasks = None,
 ):
-    """Separate audio into stems."""
+    """Separate audio into stems.
+
+    For AudioSep, pass a text prompt describing the sound to isolate.
+    Example: ?separator=audiosep&prompt=siren
+    """
     if file_id not in audio_files:
         raise HTTPException(404, "File not found")
 
-    valid_separators = ["demucs", "spleeter", "audiosep"]
+    valid_separators = ["demucs", "spleeter", "audiosep", "mdxnet"]
     if separator not in valid_separators:
         raise HTTPException(400, f"Invalid separator. Use: {valid_separators}")
 
-    # Create processing job
-    job_id = f"separate_{file_id}_{separator}"
+    # AudioSep requires a prompt
+    if separator == "audiosep" and not prompt:
+        raise HTTPException(400, "AudioSep requires a 'prompt' parameter")
+
+    # Create processing job - include prompt in job_id for AudioSep
+    if separator == "audiosep" and prompt:
+        # Sanitize prompt for job_id - remove all special chars
+        import re
+        safe_prompt = re.sub(r'[^a-zA-Z0-9]', '_', prompt)[:20]
+        job_id = f"separate_{file_id}_{separator}_{safe_prompt}"
+    else:
+        job_id = f"separate_{file_id}_{separator}"
+
     processing_jobs[job_id] = ProcessingStatus(
         file_id=file_id,
         status="processing",
         progress=0.0,
-        message=f"Starting {separator} separation...",
+        message=f"Starting {separator} separation..." + (f" (prompt: {prompt})" if prompt else ""),
     )
 
     # Run separation in background
-    background_tasks.add_task(run_separation, file_id, separator, job_id)
+    background_tasks.add_task(run_separation, file_id, separator, job_id, prompt)
 
     return {"job_id": job_id, "status": "started"}
 
 
-def run_separation(file_id: str, separator_name: str, job_id: str):
-    """Run audio separation (background task)."""
-    try:
-        from src.separators import get_separator
+def run_separation(file_id: str, separator_name: str, job_id: str, prompt: Optional[str] = None):
+    """Run audio separation via subprocess to avoid import conflicts.
 
+    Args:
+        file_id: ID of the uploaded audio file
+        separator_name: Name of separator ('demucs', 'spleeter', 'audiosep', 'mdxnet')
+        job_id: Job ID for tracking progress
+        prompt: Text prompt for AudioSep (e.g., "siren", "music")
+    """
+    import subprocess
+    import re
+
+    try:
         audio_file = audio_files[file_id]
         file_path = PROJECT_ROOT / audio_file.path.lstrip("/")
 
-        processing_jobs[job_id].message = f"Loading {separator_name} model..."
-        processing_jobs[job_id].progress = 0.2
-
-        # Get separator
-        if separator_name == "spleeter":
-            separator = get_separator(separator_name, stems=4)
+        # Create output directory
+        if separator_name == "audiosep" and prompt:
+            safe_prompt = re.sub(r'[^a-zA-Z0-9]', '_', prompt)[:30]
+            output_dir = OUTPUT_DIR / file_id / separator_name / safe_prompt
         else:
-            separator = get_separator(separator_name, device="cpu")
-
-        processing_jobs[job_id].message = "Separating audio..."
-        processing_jobs[job_id].progress = 0.4
-
-        # Run separation
-        result = separator.separate(str(file_path))
-
-        processing_jobs[job_id].message = "Saving stems..."
-        processing_jobs[job_id].progress = 0.8
-
-        # Create output directory for this file
-        output_dir = OUTPUT_DIR / file_id / separator_name
+            output_dir = OUTPUT_DIR / file_id / separator_name
         output_dir.mkdir(parents=True, exist_ok=True)
 
-        # Save stems
+        processing_jobs[job_id].message = f"Starting {separator_name} subprocess..."
+        processing_jobs[job_id].progress = 0.2
+
+        # Build subprocess command using venv python
+        venv_python = PROJECT_ROOT / ".venv" / "bin" / "python"
+        cmd = [
+            str(venv_python), "-m", "src.separators.run_separation",
+            separator_name,
+            str(file_path),
+            str(output_dir),
+        ]
+        if prompt:
+            cmd.extend(["--prompt", prompt])
+
+        if prompt:
+            processing_jobs[job_id].message = f"Separating '{prompt}' from audio..."
+        else:
+            processing_jobs[job_id].message = "Separating audio..."
+        processing_jobs[job_id].progress = 0.4
+
+        # Run subprocess with ffmpeg in PATH
+        env = os.environ.copy()
+        venv_bin = PROJECT_ROOT / ".venv" / "bin"
+        env["PATH"] = f"{venv_bin}:{env.get('PATH', '')}"
+
+        result = subprocess.run(
+            cmd,
+            capture_output=True,
+            text=True,
+            cwd=str(PROJECT_ROOT),
+            env=env,
+            timeout=600,  # 10 minute timeout
+        )
+
+        processing_jobs[job_id].progress = 0.8
+
+        if result.returncode != 0:
+            raise RuntimeError(f"Subprocess failed (rc={result.returncode}):\nSTDOUT: {result.stdout}\nSTDERR: {result.stderr}")
+
+        # Parse JSON output from subprocess - look for JSON in stdout
+        stdout = result.stdout.strip()
+        if not stdout:
+            raise RuntimeError(f"Subprocess returned empty stdout.\nSTDERR: {result.stderr}")
+
+        # Find JSON object in output (might have other prints before it)
+        # Look for {"success": which is how our output starts
+        json_start = stdout.find('{"success":')
+        if json_start == -1:
+            raise RuntimeError(f"No JSON found in stdout: {stdout}\nSTDERR: {result.stderr}")
+
+        # Find the end of the JSON object
+        json_str = stdout[json_start:]
+        # The JSON ends at the first newline or end of string
+        json_end = json_str.find('\n')
+        if json_end != -1:
+            json_str = json_str[:json_end]
+
+        output = json.loads(json_str)
+
+        if not output.get("success"):
+            raise RuntimeError(output.get("error", "Unknown error"))
+
+        # Convert absolute paths to web paths
         stem_paths = {}
-        for stem_name, audio in result.stems.items():
-            stem_filename = f"{stem_name}.wav"
-            stem_path = output_dir / stem_filename
-
-            from src.utils import save_audio
-            save_audio(stem_path, audio, result.sample_rate)
-
-            stem_paths[stem_name] = f"/outputs/{file_id}/{separator_name}/{stem_filename}"
+        for stem_name, abs_path in output["stems"].items():
+            rel_path = Path(abs_path).relative_to(OUTPUT_DIR)
+            stem_paths[stem_name] = f"/outputs/{rel_path}"
 
         # Store result
+        result_separator = f"{separator_name}:{prompt}" if separator_name == "audiosep" and prompt else separator_name
+
         sep_result = SeparationResult(
             file_id=file_id,
-            separator=separator_name,
-            model=separator.model_name,
+            separator=result_separator,
+            model=output.get("model", separator_name),
             stems=stem_paths,
-            processing_time=result.duration,
+            processing_time=output.get("processing_time", 0),
         )
 
         if file_id not in separation_results:
             separation_results[file_id] = []
 
-        # Replace existing result for same separator
         separation_results[file_id] = [
-            r for r in separation_results[file_id] if r.separator != separator_name
+            r for r in separation_results[file_id] if r.separator != result_separator
         ]
         separation_results[file_id].append(sep_result)
 
         processing_jobs[job_id].status = "completed"
         processing_jobs[job_id].progress = 1.0
-        processing_jobs[job_id].message = f"{separator_name} separation complete"
+        if separator_name == "audiosep" and prompt:
+            processing_jobs[job_id].message = f"AudioSep '{prompt}' separation complete"
+        else:
+            processing_jobs[job_id].message = f"{separator_name} separation complete"
         processing_jobs[job_id].result = sep_result.model_dump()
 
+    except subprocess.TimeoutExpired:
+        processing_jobs[job_id].status = "error"
+        processing_jobs[job_id].message = "Separation timed out after 10 minutes"
     except Exception as e:
         import traceback
         processing_jobs[job_id].status = "error"
