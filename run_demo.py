@@ -277,22 +277,20 @@ def run_demos(audio_path: Path, output_dir: Path):
     except ImportError as e:
         print(f"\nSkipping benchmark demo (missing dependency): {e}")
 
-    # Note: Separation demos are slower, uncomment to run
-    print("\n" + "=" * 60)
-    print("NOTE: Separation demos are slower and require model downloads.")
-    print("Uncomment in run_demo.py to enable them.")
-    print("=" * 60)
+    # Run separation demo
+    try:
+        demo_separation(audio_path, output_dir / "stems")
+    except ImportError as e:
+        print(f"\nSkipping separation demo (missing dependency): {e}")
+    except Exception as e:
+        print(f"\nSeparation demo error: {e}")
 
-    # Uncomment to run separation demos:
-    # try:
-    #     demo_separation(audio_path, output_dir / "stems")
-    # except ImportError as e:
-    #     print(f"\nSkipping separation demo (missing dependency): {e}")
-    #
-    # try:
-    #     demo_pipeline(audio_path, output_dir / "pipeline")
-    # except ImportError as e:
-    #     print(f"\nSkipping pipeline demo (missing dependency): {e}")
+    try:
+        demo_pipeline(audio_path, output_dir / "pipeline")
+    except ImportError as e:
+        print(f"\nSkipping pipeline demo (missing dependency): {e}")
+    except Exception as e:
+        print(f"\nPipeline demo error: {e}")
 
     print("\n" + "=" * 60)
     print("Demo complete!")
