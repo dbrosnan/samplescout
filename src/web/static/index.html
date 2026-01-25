@@ -508,8 +508,11 @@
             height: 150px;
             background: linear-gradient(180deg, #1a0a2e 0%, #16213e 50%, #0f3460 100%);
             border-radius: 6px;
-            overflow: hidden;
+            overflow: visible !important;
             position: relative;
+            display: block !important;
+            visibility: visible !important;
+            opacity: 1 !important;
         }
         .spectrogram-container canvas {
             width: 100% !important;
@@ -517,6 +520,9 @@
             position: absolute !important;
             top: 0 !important;
             left: 0 !important;
+            display: block !important;
+            visibility: visible !important;
+            opacity: 1 !important;
         }
         .spectrogram-container > div {
             position: absolute !important;
@@ -524,6 +530,14 @@
             height: 100% !important;
             top: 0 !important;
             left: 0 !important;
+            display: block !important;
+            visibility: visible !important;
+            opacity: 1 !important;
+        }
+        .spectrogram-container > div > div {
+            display: block !important;
+            visibility: visible !important;
+            opacity: 1 !important;
         }
         .spectrogram-label {
             position: absolute;
@@ -1412,23 +1426,53 @@
                     });
                 }
 
+                // Helper to force spectrogram visibility
+                const forceSpectrogramVisible = () => {
+                    if (spectrogramContainer) {
+                        spectrogramContainer.style.visibility = 'visible';
+                        spectrogramContainer.style.opacity = '1';
+                        spectrogramContainer.style.display = 'block';
+                        // Also force all child elements visible
+                        const children = spectrogramContainer.querySelectorAll('*');
+                        children.forEach(child => {
+                            child.style.visibility = 'visible';
+                            child.style.opacity = '1';
+                            child.style.display = child.tagName === 'CANVAS' ? 'block' : '';
+                        });
+                    }
+                };
+
                 wavesurfer.on('play', () => {
                     if(playBtn) playBtn.innerHTML = '⏸';
-                    // Ensure spectrogram stays visible during playback
-                    if (spectrogramContainer) {
-                        spectrogramContainer.style.visibility = 'visible';
-                        spectrogramContainer.style.opacity = '1';
-                    }
+                    forceSpectrogramVisible();
+                    // Re-check after short delay in case of redraw
+                    setTimeout(forceSpectrogramVisible, 50);
+                    setTimeout(forceSpectrogramVisible, 200);
                 });
-                wavesurfer.on('pause', () => { if(playBtn) playBtn.innerHTML = '▶'; });
-                wavesurfer.on('finish', () => { if(playBtn) playBtn.innerHTML = '▶'; currentWavesurfer = null; });
+                wavesurfer.on('pause', () => {
+                    if(playBtn) playBtn.innerHTML = '▶';
+                    forceSpectrogramVisible();
+                });
+                wavesurfer.on('finish', () => {
+                    if(playBtn) playBtn.innerHTML = '▶';
+                    currentWavesurfer = null;
+                    forceSpectrogramVisible();
+                });
                 wavesurfer.on('ready', () => {
                     console.log('Wavesurfer with spectrogram ready:', waveContainerId);
-                    // Ensure spectrogram container is visible
-                    if (spectrogramContainer) {
-                        spectrogramContainer.style.visibility = 'visible';
-                        spectrogramContainer.style.opacity = '1';
-                    }
+                    forceSpectrogramVisible();
+                    // Multiple delays to catch any late rendering
+                    setTimeout(forceSpectrogramVisible, 100);
+                    setTimeout(forceSpectrogramVisible, 500);
+                });
+                wavesurfer.on('redraw', () => {
+                    forceSpectrogramVisible();
+                });
+                wavesurfer.on('redrawcomplete', () => {
+                    forceSpectrogramVisible();
+                });
+                wavesurfer.on('interaction', () => {
+                    forceSpectrogramVisible();
                 });
                 wavesurfer.on('error', (e) => {
                     console.error('Wavesurfer error:', e);

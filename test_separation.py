@@ -10,7 +10,7 @@ import json
 import sys
 
 API_BASE = "http://127.0.0.1:8000"
-FILE_ID = "bd552a3b"  # phone_pay_dial.wav
+FILE_ID = "a475de35"  # city_audio.wav
 
 def poll_job(job_id, timeout=300):
     """Poll job until completion or timeout."""
