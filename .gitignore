@@ -126,3 +126,7 @@ tmp/
 .env.*.local
 secrets.yaml
 credentials.json
+
+# Test files
+test_screenshots/
+test_visuals.py
