@@ -1,0 +1,1318 @@
+<!DOCTYPE html>
+<html lang="en">
+<head>
+    <meta charset="UTF-8">
+    <meta name="viewport" content="width=device-width, initial-scale=1.0">
+    <title>SampleScout - AI Audio Analysis</title>
+    <link rel="preconnect" href="https://fonts.googleapis.com">
+    <link rel="preconnect" href="https://fonts.gstatic.com" crossorigin>
+    <link href="https://fonts.googleapis.com/css2?family=Inter:wght@300;400;500;600;700&display=swap" rel="stylesheet">
+    <style>
+        :root {
+            --bg-primary: #0a0a0f;
+            --bg-secondary: #12121a;
+            --bg-card: rgba(255, 255, 255, 0.03);
+            --bg-card-hover: rgba(255, 255, 255, 0.06);
+            --border-color: rgba(255, 255, 255, 0.08);
+            --text-primary: #ffffff;
+            --text-secondary: rgba(255, 255, 255, 0.6);
+            --text-muted: rgba(255, 255, 255, 0.4);
+            --accent-blue: #3b82f6;
+            --accent-purple: #8b5cf6;
+            --accent-green: #10b981;
+            --accent-orange: #f59e0b;
+            --accent-red: #ef4444;
+            --gradient-1: linear-gradient(135deg, #3b82f6 0%, #8b5cf6 100%);
+            --gradient-2: linear-gradient(135deg, #10b981 0%, #3b82f6 100%);
+        }
+
+        * {
+            margin: 0;
+            padding: 0;
+            box-sizing: border-box;
+        }
+
+        body {
+            font-family: 'Inter', -apple-system, BlinkMacSystemFont, sans-serif;
+            background: var(--bg-primary);
+            color: var(--text-primary);
+            min-height: 100vh;
+            line-height: 1.6;
+        }
+
+        /* Header */
+        .header {
+            background: var(--bg-secondary);
+            border-bottom: 1px solid var(--border-color);
+            padding: 1rem 2rem;
+            position: sticky;
+            top: 0;
+            z-index: 100;
+            backdrop-filter: blur(20px);
+        }
+
+        .header-content {
+            max-width: 1400px;
+            margin: 0 auto;
+            display: flex;
+            align-items: center;
+            justify-content: space-between;
+        }
+
+        .logo {
+            display: flex;
+            align-items: center;
+            gap: 0.75rem;
+        }
+
+        .logo-icon {
+            width: 40px;
+            height: 40px;
+            background: var(--gradient-1);
+            border-radius: 10px;
+            display: flex;
+            align-items: center;
+            justify-content: center;
+            font-size: 1.25rem;
+        }
+
+        .logo-text {
+            font-size: 1.5rem;
+            font-weight: 700;
+            background: var(--gradient-1);
+            -webkit-background-clip: text;
+            -webkit-text-fill-color: transparent;
+        }
+
+        .logo-subtitle {
+            font-size: 0.75rem;
+            color: var(--text-muted);
+            margin-top: -4px;
+        }
+
+        /* Main Layout */
+        .main {
+            max-width: 1400px;
+            margin: 0 auto;
+            padding: 2rem;
+            display: grid;
+            grid-template-columns: 380px 1fr;
+            gap: 2rem;
+        }
+
+        /* Sidebar */
+        .sidebar {
+            display: flex;
+            flex-direction: column;
+            gap: 1.5rem;
+        }
+
+        /* Cards */
+        .card {
+            background: var(--bg-card);
+            border: 1px solid var(--border-color);
+            border-radius: 16px;
+            padding: 1.5rem;
+            backdrop-filter: blur(10px);
+        }
+
+        .card-header {
+            display: flex;
+            align-items: center;
+            justify-content: space-between;
+            margin-bottom: 1rem;
+        }
+
+        .card-title {
+            font-size: 1rem;
+            font-weight: 600;
+            color: var(--text-primary);
+        }
+
+        .card-subtitle {
+            font-size: 0.75rem;
+            color: var(--text-muted);
+        }
+
+        /* Upload Zone */
+        .upload-zone {
+            border: 2px dashed var(--border-color);
+            border-radius: 12px;
+            padding: 2rem;
+            text-align: center;
+            cursor: pointer;
+            transition: all 0.3s ease;
+        }
+
+        .upload-zone:hover, .upload-zone.dragover {
+            border-color: var(--accent-blue);
+            background: rgba(59, 130, 246, 0.05);
+        }
+
+        .upload-icon {
+            font-size: 2.5rem;
+            margin-bottom: 0.75rem;
+            opacity: 0.5;
+        }
+
+        .upload-text {
+            color: var(--text-secondary);
+            font-size: 0.875rem;
+        }
+
+        .upload-text strong {
+            color: var(--accent-blue);
+        }
+
+        #file-input {
+            display: none;
+        }
+
+        /* File List */
+        .file-list {
+            display: flex;
+            flex-direction: column;
+            gap: 0.75rem;
+            max-height: 400px;
+            overflow-y: auto;
+        }
+
+        .file-item {
+            display: flex;
+            align-items: center;
+            gap: 0.75rem;
+            padding: 0.75rem;
+            background: var(--bg-card);
+            border: 1px solid var(--border-color);
+            border-radius: 10px;
+            cursor: pointer;
+            transition: all 0.2s ease;
+        }
+
+        .file-item:hover, .file-item.active {
+            background: var(--bg-card-hover);
+            border-color: var(--accent-blue);
+        }
+
+        .file-icon {
+            width: 40px;
+            height: 40px;
+            background: var(--gradient-2);
+            border-radius: 8px;
+            display: flex;
+            align-items: center;
+            justify-content: center;
+            font-size: 1rem;
+            flex-shrink: 0;
+        }
+
+        .file-info {
+            flex: 1;
+            min-width: 0;
+        }
+
+        .file-name {
+            font-size: 0.875rem;
+            font-weight: 500;
+            white-space: nowrap;
+            overflow: hidden;
+            text-overflow: ellipsis;
+        }
+
+        .file-meta {
+            font-size: 0.75rem;
+            color: var(--text-muted);
+        }
+
+        .file-delete {
+            width: 28px;
+            height: 28px;
+            border: none;
+            background: rgba(239, 68, 68, 0.1);
+            color: var(--accent-red);
+            border-radius: 6px;
+            cursor: pointer;
+            display: flex;
+            align-items: center;
+            justify-content: center;
+            opacity: 0;
+            transition: all 0.2s;
+        }
+
+        .file-item:hover .file-delete {
+            opacity: 1;
+        }
+
+        .file-delete:hover {
+            background: rgba(239, 68, 68, 0.2);
+        }
+
+        /* Content Area */
+        .content {
+            display: flex;
+            flex-direction: column;
+            gap: 1.5rem;
+        }
+
+        /* Empty State */
+        .empty-state {
+            display: flex;
+            flex-direction: column;
+            align-items: center;
+            justify-content: center;
+            padding: 4rem 2rem;
+            text-align: center;
+            color: var(--text-muted);
+        }
+
+        .empty-state-icon {
+            font-size: 4rem;
+            margin-bottom: 1rem;
+            opacity: 0.3;
+        }
+
+        .empty-state-text {
+            font-size: 1.125rem;
+            margin-bottom: 0.5rem;
+        }
+
+        /* Audio Player */
+        .audio-player-large {
+            background: linear-gradient(135deg, rgba(59, 130, 246, 0.1) 0%, rgba(139, 92, 246, 0.1) 100%);
+            border: 1px solid var(--border-color);
+            border-radius: 16px;
+            padding: 1.5rem;
+        }
+
+        .player-header {
+            display: flex;
+            align-items: center;
+            gap: 1rem;
+            margin-bottom: 1rem;
+        }
+
+        .player-title {
+            font-size: 1.25rem;
+            font-weight: 600;
+        }
+
+        .player-meta {
+            font-size: 0.875rem;
+            color: var(--text-muted);
+        }
+
+        .waveform-container {
+            height: 80px;
+            background: rgba(0, 0, 0, 0.2);
+            border-radius: 8px;
+            margin-bottom: 1rem;
+            display: flex;
+            align-items: center;
+            justify-content: center;
+            overflow: hidden;
+        }
+
+        .waveform-bars {
+            display: flex;
+            align-items: center;
+            gap: 2px;
+            height: 100%;
+            padding: 0.5rem;
+        }
+
+        .waveform-bar {
+            width: 3px;
+            background: var(--accent-blue);
+            border-radius: 2px;
+            opacity: 0.6;
+        }
+
+        .audio-controls {
+            display: flex;
+            align-items: center;
+            gap: 1rem;
+        }
+
+        .play-btn {
+            width: 48px;
+            height: 48px;
+            border: none;
+            background: var(--gradient-1);
+            color: white;
+            border-radius: 50%;
+            cursor: pointer;
+            display: flex;
+            align-items: center;
+            justify-content: center;
+            font-size: 1.25rem;
+            transition: transform 0.2s;
+        }
+
+        .play-btn:hover {
+            transform: scale(1.05);
+        }
+
+        .progress-bar {
+            flex: 1;
+            height: 6px;
+            background: rgba(255, 255, 255, 0.1);
+            border-radius: 3px;
+            cursor: pointer;
+            position: relative;
+        }
+
+        .progress-fill {
+            height: 100%;
+            background: var(--gradient-1);
+            border-radius: 3px;
+            width: 0%;
+            transition: width 0.1s;
+        }
+
+        .time-display {
+            font-size: 0.75rem;
+            color: var(--text-muted);
+            font-variant-numeric: tabular-nums;
+        }
+
+        /* Classification Results */
+        .classification-results {
+            display: flex;
+            flex-direction: column;
+            gap: 0.5rem;
+        }
+
+        .class-item {
+            display: flex;
+            align-items: center;
+            gap: 0.75rem;
+        }
+
+        .class-rank {
+            width: 24px;
+            font-size: 0.75rem;
+            color: var(--text-muted);
+            text-align: right;
+        }
+
+        .class-name {
+            width: 180px;
+            font-size: 0.875rem;
+            white-space: nowrap;
+            overflow: hidden;
+            text-overflow: ellipsis;
+        }
+
+        .class-bar-container {
+            flex: 1;
+            height: 20px;
+            background: rgba(255, 255, 255, 0.05);
+            border-radius: 4px;
+            overflow: hidden;
+        }
+
+        .class-bar {
+            height: 100%;
+            background: var(--gradient-2);
+            border-radius: 4px;
+            transition: width 0.5s ease;
+        }
+
+        .class-score {
+            width: 50px;
+            font-size: 0.75rem;
+            color: var(--text-secondary);
+            text-align: right;
+        }
+
+        /* Separator Selection */
+        .separator-grid {
+            display: grid;
+            grid-template-columns: repeat(3, 1fr);
+            gap: 1rem;
+        }
+
+        .separator-card {
+            background: var(--bg-card);
+            border: 2px solid var(--border-color);
+            border-radius: 12px;
+            padding: 1rem;
+            cursor: pointer;
+            transition: all 0.2s ease;
+            text-align: center;
+        }
+
+        .separator-card:hover {
+            border-color: var(--accent-purple);
+            background: var(--bg-card-hover);
+        }
+
+        .separator-card.active {
+            border-color: var(--accent-blue);
+            background: rgba(59, 130, 246, 0.1);
+        }
+
+        .separator-card.processing {
+            opacity: 0.7;
+            pointer-events: none;
+        }
+
+        .separator-icon {
+            font-size: 2rem;
+            margin-bottom: 0.5rem;
+        }
+
+        .separator-name {
+            font-weight: 600;
+            font-size: 0.875rem;
+            margin-bottom: 0.25rem;
+        }
+
+        .separator-desc {
+            font-size: 0.75rem;
+            color: var(--text-muted);
+        }
+
+        /* Stems Grid */
+        .stems-grid {
+            display: grid;
+            grid-template-columns: repeat(2, 1fr);
+            gap: 1rem;
+        }
+
+        .stem-card {
+            background: var(--bg-card);
+            border: 1px solid var(--border-color);
+            border-radius: 12px;
+            padding: 1rem;
+        }
+
+        .stem-header {
+            display: flex;
+            align-items: center;
+            justify-content: space-between;
+            margin-bottom: 0.75rem;
+        }
+
+        .stem-name {
+            font-weight: 600;
+            text-transform: capitalize;
+        }
+
+        .stem-badge {
+            font-size: 0.625rem;
+            padding: 0.25rem 0.5rem;
+            background: var(--accent-purple);
+            color: white;
+            border-radius: 4px;
+            text-transform: uppercase;
+        }
+
+        .stem-player {
+            display: flex;
+            align-items: center;
+            gap: 0.75rem;
+        }
+
+        .stem-play-btn {
+            width: 36px;
+            height: 36px;
+            border: none;
+            background: var(--bg-card-hover);
+            color: var(--text-primary);
+            border-radius: 50%;
+            cursor: pointer;
+            display: flex;
+            align-items: center;
+            justify-content: center;
+            transition: all 0.2s;
+        }
+
+        .stem-play-btn:hover {
+            background: var(--accent-blue);
+        }
+
+        .stem-waveform {
+            flex: 1;
+            height: 32px;
+            background: rgba(0, 0, 0, 0.2);
+            border-radius: 4px;
+            overflow: hidden;
+        }
+
+        .stem-download {
+            width: 32px;
+            height: 32px;
+            border: none;
+            background: transparent;
+            color: var(--text-muted);
+            cursor: pointer;
+            display: flex;
+            align-items: center;
+            justify-content: center;
+            border-radius: 6px;
+            transition: all 0.2s;
+        }
+
+        .stem-download:hover {
+            background: var(--bg-card-hover);
+            color: var(--text-primary);
+        }
+
+        /* Loading States */
+        .loading-spinner {
+            width: 20px;
+            height: 20px;
+            border: 2px solid var(--border-color);
+            border-top-color: var(--accent-blue);
+            border-radius: 50%;
+            animation: spin 0.8s linear infinite;
+        }
+
+        @keyframes spin {
+            to { transform: rotate(360deg); }
+        }
+
+        .processing-overlay {
+            position: absolute;
+            inset: 0;
+            background: rgba(0, 0, 0, 0.7);
+            display: flex;
+            flex-direction: column;
+            align-items: center;
+            justify-content: center;
+            border-radius: 12px;
+            gap: 1rem;
+        }
+
+        .progress-ring {
+            width: 60px;
+            height: 60px;
+        }
+
+        .progress-ring-circle {
+            stroke: var(--accent-blue);
+            stroke-linecap: round;
+            transform: rotate(-90deg);
+            transform-origin: center;
+            transition: stroke-dashoffset 0.3s;
+        }
+
+        /* Buttons */
+        .btn {
+            padding: 0.75rem 1.5rem;
+            border: none;
+            border-radius: 8px;
+            font-weight: 500;
+            cursor: pointer;
+            transition: all 0.2s;
+            display: inline-flex;
+            align-items: center;
+            justify-content: center;
+            gap: 0.5rem;
+        }
+
+        .btn-primary {
+            background: var(--gradient-1);
+            color: white;
+        }
+
+        .btn-primary:hover {
+            transform: translateY(-2px);
+            box-shadow: 0 4px 20px rgba(59, 130, 246, 0.3);
+        }
+
+        .btn-secondary {
+            background: var(--bg-card-hover);
+            color: var(--text-primary);
+            border: 1px solid var(--border-color);
+        }
+
+        .btn-secondary:hover {
+            background: rgba(255, 255, 255, 0.1);
+        }
+
+        .btn:disabled {
+            opacity: 0.5;
+            cursor: not-allowed;
+        }
+
+        /* Tabs */
+        .tabs {
+            display: flex;
+            gap: 0.25rem;
+            background: var(--bg-card);
+            padding: 0.25rem;
+            border-radius: 10px;
+            margin-bottom: 1rem;
+        }
+
+        .tab {
+            flex: 1;
+            padding: 0.5rem 1rem;
+            border: none;
+            background: transparent;
+            color: var(--text-muted);
+            font-weight: 500;
+            cursor: pointer;
+            border-radius: 8px;
+            transition: all 0.2s;
+        }
+
+        .tab:hover {
+            color: var(--text-primary);
+        }
+
+        .tab.active {
+            background: var(--accent-blue);
+            color: white;
+        }
+
+        /* Scrollbar */
+        ::-webkit-scrollbar {
+            width: 6px;
+        }
+
+        ::-webkit-scrollbar-track {
+            background: transparent;
+        }
+
+        ::-webkit-scrollbar-thumb {
+            background: var(--border-color);
+            border-radius: 3px;
+        }
+
+        ::-webkit-scrollbar-thumb:hover {
+            background: rgba(255, 255, 255, 0.2);
+        }
+
+        /* Responsive */
+        @media (max-width: 1024px) {
+            .main {
+                grid-template-columns: 1fr;
+            }
+
+            .stems-grid {
+                grid-template-columns: 1fr;
+            }
+        }
+    </style>
+</head>
+<body>
+    <header class="header">
+        <div class="header-content">
+            <div class="logo">
+                <div class="logo-icon">🎵</div>
+                <div>
+                    <div class="logo-text">SampleScout</div>
+                    <div class="logo-subtitle">AI Audio Analysis & Separation</div>
+                </div>
+            </div>
+        </div>
+    </header>
+
+    <main class="main">
+        <aside class="sidebar">
+            <!-- Upload Card -->
+            <div class="card">
+                <div class="card-header">
+                    <div>
+                        <div class="card-title">Upload Audio</div>
+                        <div class="card-subtitle">WAV, MP3, FLAC, OGG supported</div>
+                    </div>
+                </div>
+                <div class="upload-zone" id="upload-zone">
+                    <div class="upload-icon">📁</div>
+                    <div class="upload-text">
+                        Drop files here or <strong>browse</strong>
+                    </div>
+                    <input type="file" id="file-input" accept=".wav,.mp3,.flac,.ogg,.m4a" multiple>
+                </div>
+            </div>
+
+            <!-- Files Card -->
+            <div class="card">
+                <div class="card-header">
+                    <div class="card-title">Audio Files</div>
+                    <div class="card-subtitle" id="file-count">0 files</div>
+                </div>
+                <div class="file-list" id="file-list">
+                    <div class="empty-state" style="padding: 2rem;">
+                        <div style="opacity: 0.3; font-size: 2rem;">📂</div>
+                        <div style="font-size: 0.875rem; margin-top: 0.5rem;">No files uploaded</div>
+                    </div>
+                </div>
+            </div>
+        </aside>
+
+        <section class="content" id="content">
+            <!-- Empty State -->
+            <div class="card empty-state" id="empty-state">
+                <div class="empty-state-icon">🎧</div>
+                <div class="empty-state-text">Select an audio file to analyze</div>
+                <div style="color: var(--text-muted); font-size: 0.875rem;">
+                    Upload audio files and click to view classification and separation options
+                </div>
+            </div>
+
+            <!-- File Details (hidden by default) -->
+            <div id="file-details" style="display: none;">
+                <!-- Audio Player -->
+                <div class="audio-player-large" id="main-player">
+                    <div class="player-header">
+                        <div>
+                            <div class="player-title" id="player-title">Audio File</div>
+                            <div class="player-meta" id="player-meta">0:00 • 44.1kHz</div>
+                        </div>
+                    </div>
+                    <div class="waveform-container">
+                        <div class="waveform-bars" id="waveform"></div>
+                    </div>
+                    <div class="audio-controls">
+                        <button class="play-btn" id="play-btn" onclick="togglePlay()">▶</button>
+                        <div class="progress-bar" id="progress-bar" onclick="seek(event)">
+                            <div class="progress-fill" id="progress-fill"></div>
+                        </div>
+                        <div class="time-display" id="time-display">0:00 / 0:00</div>
+                    </div>
+                    <audio id="main-audio" style="display: none;"></audio>
+                </div>
+
+                <!-- Classification Card -->
+                <div class="card">
+                    <div class="card-header">
+                        <div>
+                            <div class="card-title">🧠 YAMNet Classification</div>
+                            <div class="card-subtitle">521 audio categories</div>
+                        </div>
+                        <button class="btn btn-primary" id="classify-btn" onclick="classifyAudio()">
+                            Classify
+                        </button>
+                    </div>
+                    <div id="classification-results">
+                        <div style="color: var(--text-muted); font-size: 0.875rem; text-align: center; padding: 1rem;">
+                            Click "Classify" to analyze audio content
+                        </div>
+                    </div>
+                </div>
+
+                <!-- Separation Card -->
+                <div class="card">
+                    <div class="card-header">
+                        <div>
+                            <div class="card-title">🎚️ Source Separation</div>
+                            <div class="card-subtitle">Extract stems using AI models</div>
+                        </div>
+                    </div>
+
+                    <div class="separator-grid" id="separator-grid">
+                        <div class="separator-card" data-separator="demucs" onclick="selectSeparator('demucs')">
+                            <div class="separator-icon">🎸</div>
+                            <div class="separator-name">Demucs</div>
+                            <div class="separator-desc">Best quality (Meta)</div>
+                        </div>
+                        <div class="separator-card" data-separator="spleeter" onclick="selectSeparator('spleeter')">
+                            <div class="separator-icon">⚡</div>
+                            <div class="separator-name">Spleeter</div>
+                            <div class="separator-desc">Fast (Deezer)</div>
+                        </div>
+                        <div class="separator-card" data-separator="audiosep" onclick="selectSeparator('audiosep')">
+                            <div class="separator-icon">🗣️</div>
+                            <div class="separator-name">AudioSep</div>
+                            <div class="separator-desc">Text-guided</div>
+                        </div>
+                    </div>
+
+                    <div style="margin-top: 1rem; text-align: center;">
+                        <button class="btn btn-primary" id="separate-btn" onclick="separateAudio()" disabled>
+                            Separate Audio
+                        </button>
+                    </div>
+                </div>
+
+                <!-- Stems Card -->
+                <div class="card" id="stems-card" style="display: none;">
+                    <div class="card-header">
+                        <div>
+                            <div class="card-title">🎵 Separated Stems</div>
+                            <div class="card-subtitle" id="stems-info"></div>
+                        </div>
+                    </div>
+                    <div class="stems-grid" id="stems-grid"></div>
+                </div>
+            </div>
+        </section>
+    </main>
+
+    <script>
+        // State
+        let files = {};
+        let selectedFileId = null;
+        let selectedSeparator = null;
+        let currentAudio = null;
+
+        // API Base
+        const API = '';
+
+        // Initialize
+        document.addEventListener('DOMContentLoaded', () => {
+            loadFiles();
+            setupUpload();
+        });
+
+        // File Upload
+        function setupUpload() {
+            const zone = document.getElementById('upload-zone');
+            const input = document.getElementById('file-input');
+
+            zone.addEventListener('click', () => input.click());
+
+            zone.addEventListener('dragover', (e) => {
+                e.preventDefault();
+                zone.classList.add('dragover');
+            });
+
+            zone.addEventListener('dragleave', () => {
+                zone.classList.remove('dragover');
+            });
+
+            zone.addEventListener('drop', (e) => {
+                e.preventDefault();
+                zone.classList.remove('dragover');
+                handleFiles(e.dataTransfer.files);
+            });
+
+            input.addEventListener('change', (e) => {
+                handleFiles(e.target.files);
+            });
+        }
+
+        async function handleFiles(fileList) {
+            for (const file of fileList) {
+                const formData = new FormData();
+                formData.append('file', file);
+
+                try {
+                    const res = await fetch(`${API}/api/upload`, {
+                        method: 'POST',
+                        body: formData
+                    });
+                    const data = await res.json();
+                    if (data.success) {
+                        files[data.file.id] = data.file;
+                        renderFileList();
+                    }
+                } catch (err) {
+                    console.error('Upload error:', err);
+                }
+            }
+        }
+
+        async function loadFiles() {
+            try {
+                const res = await fetch(`${API}/api/files`);
+                const data = await res.json();
+                files = {};
+                data.files.forEach(f => files[f.id] = f);
+                renderFileList();
+            } catch (err) {
+                console.error('Load error:', err);
+            }
+        }
+
+        function renderFileList() {
+            const list = document.getElementById('file-list');
+            const count = document.getElementById('file-count');
+            const fileArray = Object.values(files);
+
+            count.textContent = `${fileArray.length} file${fileArray.length !== 1 ? 's' : ''}`;
+
+            if (fileArray.length === 0) {
+                list.innerHTML = `
+                    <div class="empty-state" style="padding: 2rem;">
+                        <div style="opacity: 0.3; font-size: 2rem;">📂</div>
+                        <div style="font-size: 0.875rem; margin-top: 0.5rem;">No files uploaded</div>
+                    </div>
+                `;
+                return;
+            }
+
+            list.innerHTML = fileArray.map(f => `
+                <div class="file-item ${f.id === selectedFileId ? 'active' : ''}"
+                     onclick="selectFile('${f.id}')">
+                    <div class="file-icon">🎵</div>
+                    <div class="file-info">
+                        <div class="file-name">${f.filename}</div>
+                        <div class="file-meta">${formatDuration(f.duration)} • ${formatSize(f.size)}</div>
+                    </div>
+                    <button class="file-delete" onclick="event.stopPropagation(); deleteFile('${f.id}')">✕</button>
+                </div>
+            `).join('');
+        }
+
+        async function deleteFile(id) {
+            try {
+                await fetch(`${API}/api/files/${id}`, { method: 'DELETE' });
+                delete files[id];
+                if (selectedFileId === id) {
+                    selectedFileId = null;
+                    showEmptyState();
+                }
+                renderFileList();
+            } catch (err) {
+                console.error('Delete error:', err);
+            }
+        }
+
+        async function selectFile(id) {
+            selectedFileId = id;
+            renderFileList();
+            showFileDetails();
+
+            // Load existing results
+            try {
+                const res = await fetch(`${API}/api/results/${id}`);
+                const data = await res.json();
+
+                if (data.classification) {
+                    renderClassification(data.classification);
+                }
+
+                if (data.separations && data.separations.length > 0) {
+                    // Show most recent separation
+                    const latest = data.separations[data.separations.length - 1];
+                    renderStems(latest);
+                }
+            } catch (err) {
+                console.error('Results error:', err);
+            }
+        }
+
+        function showEmptyState() {
+            document.getElementById('empty-state').style.display = 'flex';
+            document.getElementById('file-details').style.display = 'none';
+        }
+
+        function showFileDetails() {
+            document.getElementById('empty-state').style.display = 'none';
+            document.getElementById('file-details').style.display = 'block';
+
+            const file = files[selectedFileId];
+            document.getElementById('player-title').textContent = file.filename;
+            document.getElementById('player-meta').textContent =
+                `${formatDuration(file.duration)} • ${file.sample_rate ? (file.sample_rate / 1000).toFixed(1) + 'kHz' : ''}`;
+
+            // Set audio source
+            const audio = document.getElementById('main-audio');
+            audio.src = file.path;
+            currentAudio = audio;
+
+            // Generate waveform visualization
+            generateWaveform();
+
+            // Reset UI
+            document.getElementById('classification-results').innerHTML = `
+                <div style="color: var(--text-muted); font-size: 0.875rem; text-align: center; padding: 1rem;">
+                    Click "Classify" to analyze audio content
+                </div>
+            `;
+            document.getElementById('stems-card').style.display = 'none';
+            selectedSeparator = null;
+            updateSeparatorSelection();
+        }
+
+        function generateWaveform() {
+            const container = document.getElementById('waveform');
+            const bars = 60;
+            let html = '';
+            for (let i = 0; i < bars; i++) {
+                const height = 20 + Math.random() * 60;
+                html += `<div class="waveform-bar" style="height: ${height}%"></div>`;
+            }
+            container.innerHTML = html;
+        }
+
+        // Audio Player
+        function togglePlay() {
+            const audio = document.getElementById('main-audio');
+            const btn = document.getElementById('play-btn');
+
+            if (audio.paused) {
+                audio.play();
+                btn.innerHTML = '⏸';
+            } else {
+                audio.pause();
+                btn.innerHTML = '▶';
+            }
+        }
+
+        // Set up audio event listeners
+        const mainAudio = document.getElementById('main-audio');
+
+        mainAudio.addEventListener('timeupdate', function() {
+            const progress = (this.currentTime / this.duration) * 100;
+            document.getElementById('progress-fill').style.width = progress + '%';
+            document.getElementById('time-display').textContent =
+                `${formatTime(this.currentTime)} / ${formatTime(this.duration)}`;
+        });
+
+        mainAudio.addEventListener('ended', function() {
+            document.getElementById('play-btn').innerHTML = '▶';
+        });
+
+        mainAudio.addEventListener('play', function() {
+            document.getElementById('play-btn').innerHTML = '⏸';
+        });
+
+        mainAudio.addEventListener('pause', function() {
+            document.getElementById('play-btn').innerHTML = '▶';
+        });
+
+        function seek(e) {
+            const bar = document.getElementById('progress-bar');
+            const rect = bar.getBoundingClientRect();
+            const pos = (e.clientX - rect.left) / rect.width;
+            const audio = document.getElementById('main-audio');
+            audio.currentTime = pos * audio.duration;
+        }
+
+        // Classification
+        async function classifyAudio() {
+            if (!selectedFileId) return;
+
+            const btn = document.getElementById('classify-btn');
+            btn.disabled = true;
+            btn.innerHTML = '<div class="loading-spinner"></div> Classifying...';
+
+            const results = document.getElementById('classification-results');
+            results.innerHTML = `
+                <div style="text-align: center; padding: 2rem;">
+                    <div class="loading-spinner" style="margin: 0 auto;"></div>
+                    <div style="margin-top: 1rem; color: var(--text-muted);">Analyzing audio with YAMNet...</div>
+                </div>
+            `;
+
+            try {
+                const res = await fetch(`${API}/api/classify/${selectedFileId}`, { method: 'POST' });
+                const data = await res.json();
+
+                // Poll for results
+                await pollJob(data.job_id, (status) => {
+                    if (status.status === 'completed') {
+                        renderClassification(status.result);
+                    } else if (status.status === 'error') {
+                        results.innerHTML = `<div style="color: var(--accent-red); padding: 1rem;">${status.message}</div>`;
+                    }
+                });
+            } catch (err) {
+                results.innerHTML = `<div style="color: var(--accent-red); padding: 1rem;">Error: ${err.message}</div>`;
+            }
+
+            btn.disabled = false;
+            btn.innerHTML = 'Classify';
+        }
+
+        function renderClassification(result) {
+            const container = document.getElementById('classification-results');
+            const classes = result.top_classes.slice(0, 10);
+
+            container.innerHTML = `
+                <div class="classification-results">
+                    ${classes.map((c, i) => `
+                        <div class="class-item">
+                            <div class="class-rank">${i + 1}</div>
+                            <div class="class-name">${c.name}</div>
+                            <div class="class-bar-container">
+                                <div class="class-bar" style="width: ${c.score * 100}%"></div>
+                            </div>
+                            <div class="class-score">${(c.score * 100).toFixed(1)}%</div>
+                        </div>
+                    `).join('')}
+                </div>
+                <div style="margin-top: 1rem; font-size: 0.75rem; color: var(--text-muted); text-align: center;">
+                    Processed in ${result.processing_time.toFixed(2)}s
+                </div>
+            `;
+        }
+
+        // Separation
+        function selectSeparator(name) {
+            selectedSeparator = name;
+            updateSeparatorSelection();
+            document.getElementById('separate-btn').disabled = false;
+        }
+
+        function updateSeparatorSelection() {
+            document.querySelectorAll('.separator-card').forEach(card => {
+                card.classList.toggle('active', card.dataset.separator === selectedSeparator);
+            });
+        }
+
+        async function separateAudio() {
+            if (!selectedFileId || !selectedSeparator) return;
+
+            const btn = document.getElementById('separate-btn');
+            btn.disabled = true;
+            btn.innerHTML = '<div class="loading-spinner"></div> Separating...';
+
+            const card = document.querySelector(`[data-separator="${selectedSeparator}"]`);
+            card.classList.add('processing');
+
+            try {
+                const res = await fetch(`${API}/api/separate/${selectedFileId}?separator=${selectedSeparator}`, {
+                    method: 'POST'
+                });
+                const data = await res.json();
+
+                // Poll for results
+                await pollJob(data.job_id, (status) => {
+                    if (status.status === 'completed') {
+                        renderStems(status.result);
+                    } else if (status.status === 'error') {
+                        alert('Separation error: ' + status.message);
+                    }
+                });
+            } catch (err) {
+                alert('Error: ' + err.message);
+            }
+
+            btn.disabled = false;
+            btn.innerHTML = 'Separate Audio';
+            card.classList.remove('processing');
+        }
+
+        function renderStems(result) {
+            const card = document.getElementById('stems-card');
+            const grid = document.getElementById('stems-grid');
+            const info = document.getElementById('stems-info');
+
+            card.style.display = 'block';
+            info.textContent = `${result.separator} • ${result.processing_time.toFixed(2)}s`;
+
+            const stemColors = {
+                drums: '#ef4444',
+                bass: '#8b5cf6',
+                vocals: '#10b981',
+                other: '#f59e0b'
+            };
+
+            grid.innerHTML = Object.entries(result.stems).map(([name, path]) => `
+                <div class="stem-card">
+                    <div class="stem-header">
+                        <div class="stem-name">${name}</div>
+                        <div class="stem-badge" style="background: ${stemColors[name] || '#3b82f6'}">${result.separator}</div>
+                    </div>
+                    <div class="stem-player">
+                        <button class="stem-play-btn" onclick="playStem('${path}', this)">▶</button>
+                        <div class="stem-waveform">
+                            <div class="waveform-bars" style="height: 100%; padding: 4px;">
+                                ${generateMiniWaveform(stemColors[name] || '#3b82f6')}
+                            </div>
+                        </div>
+                        <a class="stem-download" href="${path}" download title="Download">⬇</a>
+                    </div>
+                    <audio id="audio-${name}" src="${path}" style="display: none;"></audio>
+                </div>
+            `).join('');
+        }
+
+        function generateMiniWaveform(color) {
+            let html = '';
+            for (let i = 0; i < 30; i++) {
+                const height = 30 + Math.random() * 70;
+                html += `<div class="waveform-bar" style="height: ${height}%; background: ${color}; width: 2px;"></div>`;
+            }
+            return html;
+        }
+
+        let currentStemAudio = null;
+        let currentStemBtn = null;
+
+        function playStem(path, btn) {
+            // Find audio element for this button
+            const audio = btn.closest('.stem-card').querySelector('audio');
+
+            // If clicking on same audio that's playing, just pause it
+            if (currentStemAudio === audio) {
+                if (audio.paused) {
+                    audio.play();
+                    btn.innerHTML = '⏸';
+                } else {
+                    audio.pause();
+                    btn.innerHTML = '▶';
+                }
+                return;
+            }
+
+            // Stop previous audio if different
+            if (currentStemAudio && currentStemBtn) {
+                currentStemAudio.pause();
+                currentStemAudio.currentTime = 0;
+                currentStemBtn.innerHTML = '▶';
+            }
+
+            // Play new audio
+            audio.play();
+            btn.innerHTML = '⏸';
+            currentStemAudio = audio;
+            currentStemBtn = btn;
+
+            audio.onended = () => {
+                btn.innerHTML = '▶';
+                currentStemAudio = null;
+                currentStemBtn = null;
+            };
+        }
+
+        // Job Polling
+        async function pollJob(jobId, callback) {
+            const maxAttempts = 120;  // 2 minutes max
+            let attempts = 0;
+
+            while (attempts < maxAttempts) {
+                try {
+                    const res = await fetch(`${API}/api/status/${jobId}`);
+                    const status = await res.json();
+
+                    if (status.status === 'completed' || status.status === 'error') {
+                        callback(status);
+                        return;
+                    }
+
+                    await new Promise(r => setTimeout(r, 1000));
+                    attempts++;
+                } catch (err) {
+                    console.error('Poll error:', err);
+                    break;
+                }
+            }
+        }
+
+        // Utilities
+        function formatDuration(seconds) {
+            if (!seconds) return '0:00';
+            const mins = Math.floor(seconds / 60);
+            const secs = Math.floor(seconds % 60);
+            return `${mins}:${secs.toString().padStart(2, '0')}`;
+        }
+
+        function formatTime(seconds) {
+            if (!seconds || isNaN(seconds)) return '0:00';
+            const mins = Math.floor(seconds / 60);
+            const secs = Math.floor(seconds % 60);
+            return `${mins}:${secs.toString().padStart(2, '0')}`;
+        }
+
+        function formatSize(bytes) {
+            if (!bytes) return '0 B';
+            const units = ['B', 'KB', 'MB', 'GB'];
+            let i = 0;
+            while (bytes >= 1024 && i < units.length - 1) {
+                bytes /= 1024;
+                i++;
+            }
+            return `${bytes.toFixed(1)} ${units[i]}`;
+        }
+    </script>
+</body>
+</html>
