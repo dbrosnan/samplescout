@@ -7,6 +7,7 @@
     <link rel="preconnect" href="https://fonts.googleapis.com">
     <link rel="preconnect" href="https://fonts.gstatic.com" crossorigin>
     <link href="https://fonts.googleapis.com/css2?family=Inter:wght@300;400;500;600;700&display=swap" rel="stylesheet">
+    <link href="https://fonts.googleapis.com/css2?family=Cinzel:wght@400;500;600;700&display=swap" rel="stylesheet">
     <!-- WaveSurfer.js UMD bundle for better compatibility -->
     <script src="https://unpkg.com/wavesurfer.js@7/dist/wavesurfer.min.js"></script>
     <script src="https://unpkg.com/wavesurfer.js@7/dist/plugins/spectrogram.min.js"></script>
@@ -19,23 +20,42 @@
     </script>
     <style>
         :root {
-            --bg-primary: #0a0a0f;
-            --bg-secondary: #12121a;
-            --bg-card: rgba(255, 255, 255, 0.03);
-            --bg-card-hover: rgba(255, 255, 255, 0.06);
-            --border-color: rgba(255, 255, 255, 0.08);
+            /* Prince-inspired color palette: Purple Rain meets Purple & Gold */
+            --bg-primary: #0a0008;
+            --bg-secondary: #120a14;
+            --bg-card: rgba(106, 13, 173, 0.08);
+            --bg-card-hover: rgba(106, 13, 173, 0.15);
+            --border-color: rgba(186, 135, 255, 0.15);
             --text-primary: #ffffff;
-            --text-secondary: rgba(255, 255, 255, 0.6);
-            --text-muted: rgba(255, 255, 255, 0.4);
+            --text-secondary: rgba(255, 255, 255, 0.7);
+            --text-muted: rgba(186, 135, 255, 0.5);
+
+            /* Prince Purple Spectrum */
+            --prince-purple: #6a0dad;
+            --prince-purple-light: #9b4dca;
+            --prince-purple-dark: #3d0066;
+            --prince-violet: #8b5cf6;
+            --prince-magenta: #c026d3;
+
+            /* Prince Gold */
+            --prince-gold: #d4af37;
+            --prince-gold-light: #f4d03f;
+            --prince-gold-dark: #a67c00;
+
+            /* Accents */
             --accent-blue: #3b82f6;
-            --accent-purple: #8b5cf6;
+            --accent-purple: #9b4dca;
             --accent-green: #10b981;
             --accent-orange: #f59e0b;
             --accent-red: #ef4444;
             --accent-pink: #ec4899;
-            --gradient-1: linear-gradient(135deg, #3b82f6 0%, #8b5cf6 100%);
-            --gradient-2: linear-gradient(135deg, #10b981 0%, #3b82f6 100%);
-            --gradient-3: linear-gradient(135deg, #f59e0b 0%, #ef4444 100%);
+
+            /* Prince-inspired gradients */
+            --gradient-1: linear-gradient(135deg, #6a0dad 0%, #9b4dca 50%, #d4af37 100%);
+            --gradient-2: linear-gradient(135deg, #3d0066 0%, #6a0dad 100%);
+            --gradient-3: linear-gradient(135deg, #d4af37 0%, #f4d03f 100%);
+            --gradient-purple-rain: linear-gradient(180deg, #3d0066 0%, #6a0dad 50%, #9b4dca 100%);
+            --gradient-gold-glow: linear-gradient(135deg, rgba(212, 175, 55, 0.3) 0%, rgba(212, 175, 55, 0) 100%);
         }
 
         * { margin: 0; padding: 0; box-sizing: border-box; }
@@ -46,16 +66,22 @@
             color: var(--text-primary);
             min-height: 100vh;
             line-height: 1.6;
+            /* Subtle paisley-inspired pattern overlay */
+            background-image:
+                radial-gradient(ellipse at 20% 80%, rgba(106, 13, 173, 0.15) 0%, transparent 50%),
+                radial-gradient(ellipse at 80% 20%, rgba(212, 175, 55, 0.08) 0%, transparent 50%),
+                radial-gradient(ellipse at 50% 50%, rgba(155, 77, 202, 0.05) 0%, transparent 70%);
         }
 
         .header {
-            background: var(--bg-secondary);
+            background: linear-gradient(180deg, rgba(18, 10, 20, 0.98) 0%, rgba(10, 0, 8, 0.95) 100%);
             border-bottom: 1px solid var(--border-color);
             padding: 1rem 2rem;
             position: sticky;
             top: 0;
             z-index: 100;
             backdrop-filter: blur(20px);
+            box-shadow: 0 4px 30px rgba(106, 13, 173, 0.2);
         }
 
         .header-content {
@@ -73,28 +99,40 @@
         }
 
         .logo-icon {
-            width: 40px;
-            height: 40px;
+            width: 44px;
+            height: 44px;
             background: var(--gradient-1);
-            border-radius: 10px;
+            border-radius: 12px;
             display: flex;
             align-items: center;
             justify-content: center;
-            font-size: 1.25rem;
+            font-size: 1.5rem;
+            box-shadow: 0 0 20px rgba(106, 13, 173, 0.5), 0 0 40px rgba(212, 175, 55, 0.2);
+            animation: logo-glow 3s ease-in-out infinite alternate;
+        }
+
+        @keyframes logo-glow {
+            from { box-shadow: 0 0 20px rgba(106, 13, 173, 0.5), 0 0 40px rgba(212, 175, 55, 0.2); }
+            to { box-shadow: 0 0 30px rgba(155, 77, 202, 0.6), 0 0 60px rgba(212, 175, 55, 0.3); }
         }
 
         .logo-text {
-            font-size: 1.5rem;
-            font-weight: 700;
-            background: var(--gradient-1);
+            font-family: 'Cinzel', serif;
+            font-size: 1.6rem;
+            font-weight: 600;
+            background: linear-gradient(135deg, #d4af37 0%, #f4d03f 50%, #d4af37 100%);
             -webkit-background-clip: text;
             -webkit-text-fill-color: transparent;
+            text-shadow: 0 0 30px rgba(212, 175, 55, 0.3);
+            letter-spacing: 0.05em;
         }
 
         .logo-subtitle {
-            font-size: 0.75rem;
-            color: var(--text-muted);
-            margin-top: -4px;
+            font-size: 0.7rem;
+            color: var(--prince-purple-light);
+            margin-top: -2px;
+            letter-spacing: 0.1em;
+            text-transform: uppercase;
         }
 
         .main {
@@ -109,11 +147,12 @@
         .sidebar { display: flex; flex-direction: column; gap: 1.5rem; }
 
         .card {
-            background: var(--bg-card);
-            border: 1px solid var(--border-color);
+            background: linear-gradient(180deg, rgba(61, 0, 102, 0.15) 0%, rgba(10, 0, 8, 0.8) 100%);
+            border: 1px solid rgba(186, 135, 255, 0.15);
             border-radius: 16px;
             padding: 1.5rem;
             backdrop-filter: blur(10px);
+            box-shadow: 0 8px 32px rgba(106, 13, 173, 0.1);
         }
 
         .card-header {
@@ -166,8 +205,9 @@
         }
 
         .file-item:hover, .file-item.active {
-            background: var(--bg-card-hover);
-            border-color: var(--accent-blue);
+            background: rgba(106, 13, 173, 0.2);
+            border-color: var(--prince-gold);
+            box-shadow: 0 0 15px rgba(212, 175, 55, 0.15);
         }
 
         .file-icon {
@@ -221,6 +261,291 @@
         }
 
         .empty-state-icon { font-size: 4rem; margin-bottom: 1rem; opacity: 0.3; }
+
+        /* ═══════════════════════════════════════════════════════════════════
+           PRINCE-INSPIRED QUEUE PANEL - Purple Rain Processing Queue
+           ═══════════════════════════════════════════════════════════════════ */
+
+        .queue-panel {
+            background: linear-gradient(180deg, rgba(61, 0, 102, 0.4) 0%, rgba(10, 0, 8, 0.9) 100%);
+            border: 1px solid rgba(186, 135, 255, 0.2);
+            border-radius: 20px;
+            padding: 1.25rem;
+            margin-bottom: 1.5rem;
+            position: relative;
+            overflow: hidden;
+            box-shadow: 0 10px 40px rgba(106, 13, 173, 0.2), inset 0 1px 0 rgba(212, 175, 55, 0.1);
+        }
+
+        .queue-panel::before {
+            content: '';
+            position: absolute;
+            top: 0;
+            left: 0;
+            right: 0;
+            height: 3px;
+            background: linear-gradient(90deg, var(--prince-purple) 0%, var(--prince-gold) 50%, var(--prince-purple) 100%);
+        }
+
+        .queue-header {
+            display: flex;
+            align-items: center;
+            justify-content: space-between;
+            margin-bottom: 1rem;
+        }
+
+        .queue-title {
+            font-family: 'Cinzel', serif;
+            font-size: 1rem;
+            font-weight: 600;
+            color: var(--prince-gold);
+            display: flex;
+            align-items: center;
+            gap: 0.5rem;
+            letter-spacing: 0.05em;
+        }
+
+        .queue-title-icon {
+            font-size: 1.2rem;
+        }
+
+        .queue-controls {
+            display: flex;
+            gap: 0.5rem;
+        }
+
+        .queue-btn {
+            padding: 0.5rem 1rem;
+            border: 1px solid var(--prince-purple-light);
+            background: linear-gradient(135deg, rgba(106, 13, 173, 0.3) 0%, rgba(61, 0, 102, 0.5) 100%);
+            color: var(--prince-gold-light);
+            border-radius: 8px;
+            font-size: 0.75rem;
+            font-weight: 600;
+            cursor: pointer;
+            transition: all 0.3s ease;
+            text-transform: uppercase;
+            letter-spacing: 0.05em;
+        }
+
+        .queue-btn:hover {
+            background: linear-gradient(135deg, rgba(155, 77, 202, 0.4) 0%, rgba(106, 13, 173, 0.6) 100%);
+            border-color: var(--prince-gold);
+            box-shadow: 0 0 20px rgba(212, 175, 55, 0.3);
+        }
+
+        .queue-btn.pause-btn {
+            background: linear-gradient(135deg, rgba(212, 175, 55, 0.2) 0%, rgba(166, 124, 0, 0.3) 100%);
+            border-color: var(--prince-gold);
+        }
+
+        .queue-btn.pause-btn:hover {
+            background: linear-gradient(135deg, rgba(212, 175, 55, 0.3) 0%, rgba(166, 124, 0, 0.4) 100%);
+        }
+
+        .queue-btn.pause-btn.paused {
+            background: linear-gradient(135deg, var(--prince-gold) 0%, var(--prince-gold-light) 100%);
+            color: #000;
+        }
+
+        /* Overall Progress Bar */
+        .queue-progress-container {
+            margin-bottom: 1rem;
+        }
+
+        .queue-progress-header {
+            display: flex;
+            justify-content: space-between;
+            align-items: center;
+            margin-bottom: 0.5rem;
+            font-size: 0.7rem;
+            color: var(--text-secondary);
+        }
+
+        .queue-progress-stats {
+            color: var(--prince-gold);
+            font-weight: 600;
+        }
+
+        .queue-progress-bar {
+            height: 8px;
+            background: rgba(0, 0, 0, 0.4);
+            border-radius: 4px;
+            overflow: hidden;
+            position: relative;
+        }
+
+        .queue-progress-fill {
+            height: 100%;
+            background: linear-gradient(90deg, var(--prince-purple) 0%, var(--prince-gold) 100%);
+            border-radius: 4px;
+            transition: width 0.5s ease;
+            position: relative;
+            overflow: hidden;
+        }
+
+        .queue-progress-fill::after {
+            content: '';
+            position: absolute;
+            top: 0;
+            left: 0;
+            right: 0;
+            bottom: 0;
+            background: linear-gradient(90deg, transparent 0%, rgba(255,255,255,0.3) 50%, transparent 100%);
+            animation: progress-shine 2s infinite;
+        }
+
+        @keyframes progress-shine {
+            0% { transform: translateX(-100%); }
+            100% { transform: translateX(100%); }
+        }
+
+        /* Queue Items List */
+        .queue-items {
+            max-height: 200px;
+            overflow-y: auto;
+            display: flex;
+            flex-direction: column;
+            gap: 0.5rem;
+        }
+
+        .queue-items::-webkit-scrollbar {
+            width: 6px;
+        }
+
+        .queue-items::-webkit-scrollbar-track {
+            background: rgba(0, 0, 0, 0.2);
+            border-radius: 3px;
+        }
+
+        .queue-items::-webkit-scrollbar-thumb {
+            background: var(--prince-purple);
+            border-radius: 3px;
+        }
+
+        .queue-item {
+            display: flex;
+            align-items: center;
+            gap: 0.75rem;
+            padding: 0.6rem 0.75rem;
+            background: rgba(0, 0, 0, 0.3);
+            border: 1px solid rgba(186, 135, 255, 0.1);
+            border-radius: 10px;
+            transition: all 0.3s ease;
+        }
+
+        .queue-item.processing {
+            background: linear-gradient(135deg, rgba(106, 13, 173, 0.3) 0%, rgba(212, 175, 55, 0.1) 100%);
+            border-color: var(--prince-gold);
+            animation: processing-pulse 2s ease-in-out infinite;
+        }
+
+        @keyframes processing-pulse {
+            0%, 100% { box-shadow: 0 0 10px rgba(212, 175, 55, 0.2); }
+            50% { box-shadow: 0 0 20px rgba(212, 175, 55, 0.4); }
+        }
+
+        .queue-item.completed {
+            opacity: 0.6;
+            background: rgba(16, 185, 129, 0.1);
+            border-color: rgba(16, 185, 129, 0.3);
+        }
+
+        .queue-item.error {
+            background: rgba(239, 68, 68, 0.1);
+            border-color: rgba(239, 68, 68, 0.3);
+        }
+
+        .queue-item-rank {
+            width: 24px;
+            height: 24px;
+            display: flex;
+            align-items: center;
+            justify-content: center;
+            background: var(--prince-purple-dark);
+            border-radius: 6px;
+            font-size: 0.7rem;
+            font-weight: 700;
+            color: var(--prince-gold-light);
+        }
+
+        .queue-item.processing .queue-item-rank {
+            background: var(--prince-gold);
+            color: #000;
+            animation: rank-spin 1s linear infinite;
+        }
+
+        @keyframes rank-spin {
+            from { transform: rotate(0deg); }
+            to { transform: rotate(360deg); }
+        }
+
+        .queue-item-info {
+            flex: 1;
+            min-width: 0;
+        }
+
+        .queue-item-name {
+            font-size: 0.8rem;
+            font-weight: 500;
+            color: var(--text-primary);
+            white-space: nowrap;
+            overflow: hidden;
+            text-overflow: ellipsis;
+        }
+
+        .queue-item-meta {
+            font-size: 0.65rem;
+            color: var(--text-muted);
+            display: flex;
+            align-items: center;
+            gap: 0.5rem;
+        }
+
+        .queue-item-confidence {
+            color: var(--prince-gold);
+        }
+
+        .queue-item-status {
+            font-size: 0.65rem;
+            padding: 0.15rem 0.4rem;
+            border-radius: 4px;
+            font-weight: 600;
+            text-transform: uppercase;
+        }
+
+        .queue-item-status.queued {
+            background: rgba(186, 135, 255, 0.2);
+            color: var(--prince-purple-light);
+        }
+
+        .queue-item-status.processing {
+            background: rgba(212, 175, 55, 0.2);
+            color: var(--prince-gold-light);
+        }
+
+        .queue-item-status.completed {
+            background: rgba(16, 185, 129, 0.2);
+            color: var(--accent-green);
+        }
+
+        .queue-item-status.error {
+            background: rgba(239, 68, 68, 0.2);
+            color: var(--accent-red);
+        }
+
+        .queue-empty {
+            text-align: center;
+            padding: 1.5rem;
+            color: var(--text-muted);
+            font-size: 0.8rem;
+        }
+
+        .queue-empty-icon {
+            font-size: 2rem;
+            margin-bottom: 0.5rem;
+            opacity: 0.5;
+        }
 
         /* Player and YAMNet side-by-side layout */
         .player-classification-row {
@@ -278,10 +603,11 @@
         }
 
         .audio-player-large {
-            background: linear-gradient(135deg, rgba(59, 130, 246, 0.1) 0%, rgba(139, 92, 246, 0.1) 100%);
-            border: 1px solid var(--border-color);
+            background: linear-gradient(135deg, rgba(61, 0, 102, 0.3) 0%, rgba(106, 13, 173, 0.2) 100%);
+            border: 1px solid rgba(186, 135, 255, 0.2);
             border-radius: 16px;
             padding: 1.5rem;
+            box-shadow: 0 8px 32px rgba(106, 13, 173, 0.15), inset 0 1px 0 rgba(212, 175, 55, 0.05);
         }
 
         .player-header { display: flex; align-items: center; gap: 1rem; margin-bottom: 1rem; }
@@ -411,17 +737,25 @@
             gap: 0.5rem;
         }
 
-        .separator-tab:hover { color: var(--text-primary); background: var(--bg-card-hover); }
-
-        .separator-tab.active {
-            background: var(--accent-blue);
-            color: white;
+        .separator-tab:hover {
+            color: var(--text-primary);
+            background: rgba(106, 13, 173, 0.2);
         }
 
-        .separator-tab.active.demucs { background: var(--accent-purple); }
+        .separator-tab.active {
+            background: var(--prince-purple);
+            color: white;
+            box-shadow: 0 4px 15px rgba(106, 13, 173, 0.3);
+        }
+
+        .separator-tab.active.demucs { background: var(--prince-purple); }
         .separator-tab.active.spleeter { background: var(--accent-green); }
-        .separator-tab.active.audiosep { background: var(--accent-orange); }
-        .separator-tab.active.mdxnet { background: #3b82f6; }
+        .separator-tab.active.audiosep {
+            background: linear-gradient(135deg, var(--prince-gold) 0%, var(--prince-gold-light) 100%);
+            color: #000;
+            box-shadow: 0 4px 20px rgba(212, 175, 55, 0.4);
+        }
+        .separator-tab.active.mdxnet { background: var(--prince-purple-light); }
 
         .tab-icon { font-size: 1.125rem; }
 
@@ -734,23 +1068,34 @@
         }
         @keyframes spin { to { transform: rotate(360deg); } }
 
-        /* Buttons */
+        /* Buttons - Prince-inspired */
         .btn {
             padding: 0.75rem 1.5rem;
-            border: none;
+            border: 1px solid rgba(186, 135, 255, 0.3);
             border-radius: 8px;
-            font-weight: 500;
+            font-weight: 600;
             cursor: pointer;
-            transition: all 0.2s;
+            transition: all 0.3s ease;
             display: inline-flex;
             align-items: center;
             justify-content: center;
             gap: 0.5rem;
+            text-transform: uppercase;
+            letter-spacing: 0.05em;
+            font-size: 0.8rem;
         }
 
-        .btn-primary { background: var(--gradient-1); color: white; }
-        .btn-primary:hover { transform: translateY(-2px); box-shadow: 0 4px 20px rgba(59, 130, 246, 0.3); }
-        .btn:disabled { opacity: 0.5; cursor: not-allowed; }
+        .btn-primary {
+            background: linear-gradient(135deg, var(--prince-purple) 0%, var(--prince-purple-light) 100%);
+            color: white;
+            box-shadow: 0 4px 15px rgba(106, 13, 173, 0.3);
+        }
+        .btn-primary:hover {
+            transform: translateY(-2px);
+            box-shadow: 0 6px 25px rgba(106, 13, 173, 0.4), 0 0 20px rgba(212, 175, 55, 0.2);
+            border-color: var(--prince-gold);
+        }
+        .btn:disabled { opacity: 0.5; cursor: not-allowed; transform: none !important; }
 
         /* Classification Results in sidebar card */
         .classification-results { display: flex; flex-direction: column; gap: 0.5rem; }
@@ -887,6 +1232,42 @@
                     </div>
                 </div>
 
+                <!-- ═══ PURPLE RAIN PROCESSING QUEUE ═══ -->
+                <div class="queue-panel" id="queue-panel" style="display: none;">
+                    <div class="queue-header">
+                        <div class="queue-title">
+                            <span class="queue-title-icon">☔</span>
+                            Purple Rain Queue
+                        </div>
+                        <div class="queue-controls">
+                            <button class="queue-btn pause-btn" id="queue-pause-btn" onclick="toggleQueuePause()">
+                                ⏸ Pause
+                            </button>
+                            <button class="queue-btn" onclick="clearQueue()">
+                                ✕ Clear
+                            </button>
+                        </div>
+                    </div>
+
+                    <div class="queue-progress-container">
+                        <div class="queue-progress-header">
+                            <span>Overall Progress</span>
+                            <span class="queue-progress-stats" id="queue-stats">0 / 0 complete</span>
+                        </div>
+                        <div class="queue-progress-bar">
+                            <div class="queue-progress-fill" id="queue-progress-fill" style="width: 0%"></div>
+                        </div>
+                    </div>
+
+                    <div class="queue-items" id="queue-items">
+                        <div class="queue-empty">
+                            <div class="queue-empty-icon">🎵</div>
+                            <div>No items in queue</div>
+                            <div style="font-size: 0.7rem; margin-top: 0.25rem;">Classify audio to auto-queue separations</div>
+                        </div>
+                    </div>
+                </div>
+
                 <!-- Separator Tabs -->
                 <div class="card">
                     <div class="card-header">
@@ -979,10 +1360,251 @@
 
         const API = '';
 
+        // ═══════════════════════════════════════════════════════════════════
+        // PURPLE RAIN QUEUE - State Management
+        // ═══════════════════════════════════════════════════════════════════
+        let queuePaused = false;
+        let queuePollingInterval = null;
+        let queueItems = [];  // Local copy of queue items
+
         document.addEventListener('DOMContentLoaded', () => {
             loadFiles();
             setupUpload();
+            // Start queue polling
+            startQueuePolling();
         });
+
+        // ═══════════════════════════════════════════════════════════════════
+        // QUEUE FUNCTIONS
+        // ═══════════════════════════════════════════════════════════════════
+
+        function startQueuePolling() {
+            if (queuePollingInterval) return;
+            queuePollingInterval = setInterval(updateQueueDisplay, 1000);
+        }
+
+        async function updateQueueDisplay() {
+            try {
+                const res = await fetch(`${API}/api/queue/status`);
+                const status = await res.json();
+
+                queuePaused = status.is_paused;
+                queueItems = [...(status.queue || [])];
+
+                // Add completed items from current_item if processing
+                if (status.current_item) {
+                    // Check if current item is in queue
+                    const inQueue = queueItems.find(i => i.id === status.current_item.id);
+                    if (!inQueue) {
+                        queueItems.unshift(status.current_item);
+                    }
+                }
+
+                // Update UI
+                const panel = document.getElementById('queue-panel');
+                const progressFill = document.getElementById('queue-progress-fill');
+                const queueStats = document.getElementById('queue-stats');
+                const itemsContainer = document.getElementById('queue-items');
+                const pauseBtn = document.getElementById('queue-pause-btn');
+
+                // Show/hide panel based on queue activity
+                if (status.total_items > 0) {
+                    panel.style.display = 'block';
+                } else {
+                    panel.style.display = 'none';
+                    return;
+                }
+
+                // Update progress bar
+                progressFill.style.width = `${status.overall_progress * 100}%`;
+                queueStats.textContent = `${status.completed_items} / ${status.total_items} complete`;
+
+                // Update pause button
+                if (queuePaused) {
+                    pauseBtn.innerHTML = '▶ Resume';
+                    pauseBtn.classList.add('paused');
+                } else {
+                    pauseBtn.innerHTML = '⏸ Pause';
+                    pauseBtn.classList.remove('paused');
+                }
+
+                // Render queue items
+                if (queueItems.length === 0) {
+                    itemsContainer.innerHTML = `
+                        <div class="queue-empty">
+                            <div class="queue-empty-icon">✨</div>
+                            <div>All separations complete!</div>
+                        </div>
+                    `;
+                } else {
+                    // Also include processing item if not in queue list
+                    let allItems = [...queueItems];
+                    if (status.current_item && !allItems.find(i => i.id === status.current_item.id)) {
+                        allItems.unshift(status.current_item);
+                    }
+
+                    itemsContainer.innerHTML = allItems.map((item, idx) => `
+                        <div class="queue-item ${item.status}">
+                            <div class="queue-item-rank">${item.status === 'processing' ? '⚡' : (idx + 1)}</div>
+                            <div class="queue-item-info">
+                                <div class="queue-item-name">${item.prompt}</div>
+                                <div class="queue-item-meta">
+                                    <span class="queue-item-confidence">${(item.confidence * 100).toFixed(0)}% conf</span>
+                                    ${item.status === 'processing' ? `<span>${(item.progress * 100).toFixed(0)}%</span>` : ''}
+                                </div>
+                            </div>
+                            <div class="queue-item-status ${item.status}">${item.status}</div>
+                        </div>
+                    `).join('');
+                }
+
+                // If processing, also update the AudioSep classification item
+                if (status.current_item && status.current_item.status === 'processing') {
+                    updateAudioSepItemProgress(status.current_item);
+                }
+
+                // Check for newly completed items and render their results
+                Object.values(status).forEach(item => {
+                    if (item && item.status === 'completed' && item.result) {
+                        showCompletedQueueItemResult(item);
+                    }
+                });
+
+            } catch (err) {
+                console.error('Queue poll error:', err);
+            }
+        }
+
+        // Track which items we've already rendered
+        const renderedQueueItems = new Set();
+
+        function showCompletedQueueItemResult(item) {
+            if (renderedQueueItems.has(item.id)) return;
+            renderedQueueItems.add(item.id);
+
+            // Find the AudioSep classification item and add the player
+            const items = document.querySelectorAll('.classification-item');
+            items.forEach(el => {
+                const nameEl = el.querySelector('.classification-name');
+                if (nameEl && nameEl.textContent === item.prompt && item.result && item.result.stems) {
+                    // Remove progress div
+                    const progressDiv = el.querySelector('.audiosep-progress');
+                    if (progressDiv) progressDiv.remove();
+
+                    // Add player with spectrogram
+                    let playerHtml = el.querySelector('.audio-visualization');
+                    if (!playerHtml && item.result.stems) {
+                        el.classList.add('has-visualization');
+                        const stemPath = Object.values(item.result.stems)[0];
+                        const wavesurferId = `wavesurfer-q-${item.id}`;
+                        const spectrogramId = `spectrogram-q-${item.id}`;
+
+                        el.insertAdjacentHTML('beforeend', `
+                            <div class="audio-visualization">
+                                <div class="waveform-spectrogram-row">
+                                    <button class="stem-play-btn" id="play-btn-${wavesurferId}">▶</button>
+                                    <div class="wavesurfer-container" id="${wavesurferId}"></div>
+                                    <a class="stem-download" href="${stemPath}" download title="Download">⬇</a>
+                                </div>
+                                <div class="spectrogram-container" id="${spectrogramId}">
+                                    <span class="spectrogram-label">Spectrogram</span>
+                                </div>
+                            </div>
+                        `);
+
+                        // Update button
+                        const btn = el.querySelector('.separate-btn');
+                        if (btn) {
+                            btn.innerHTML = '✓ Done';
+                            btn.style.background = 'var(--accent-green)';
+                        }
+
+                        // Initialize wavesurfer
+                        requestAnimationFrame(() => {
+                            setTimeout(() => initWavesurferWithSpectrogram(wavesurferId, spectrogramId, stemPath), 100);
+                        });
+                    }
+                }
+            });
+        }
+
+        function updateAudioSepItemProgress(item) {
+            // Find the AudioSep item in the classification list and update its progress
+            const items = document.querySelectorAll('.classification-item');
+            items.forEach(el => {
+                const nameEl = el.querySelector('.classification-name');
+                if (nameEl && nameEl.textContent === item.prompt) {
+                    let progressDiv = el.querySelector('.audiosep-progress');
+                    if (!progressDiv) {
+                        progressDiv = document.createElement('div');
+                        progressDiv.className = 'audiosep-progress';
+                        el.appendChild(progressDiv);
+                    }
+                    progressDiv.innerHTML = `
+                        <div class="audiosep-progress-header">
+                            <span class="audiosep-progress-status">${item.message || 'Processing...'}</span>
+                        </div>
+                        <div class="audiosep-progress-bar">
+                            <div class="audiosep-progress-fill" style="width: ${item.progress * 100}%"></div>
+                        </div>
+                    `;
+                }
+            });
+        }
+
+        async function toggleQueuePause() {
+            try {
+                if (queuePaused) {
+                    await fetch(`${API}/api/queue/resume`, { method: 'POST' });
+                } else {
+                    await fetch(`${API}/api/queue/pause`, { method: 'POST' });
+                }
+                queuePaused = !queuePaused;
+                updateQueueDisplay();
+            } catch (err) {
+                console.error('Queue pause error:', err);
+            }
+        }
+
+        async function clearQueue() {
+            if (!confirm('Clear all pending items from the queue?')) return;
+            try {
+                await fetch(`${API}/api/queue/clear`, { method: 'POST' });
+                updateQueueDisplay();
+            } catch (err) {
+                console.error('Queue clear error:', err);
+            }
+        }
+
+        async function addToQueue(prompt, confidence) {
+            if (!selectedFileId) return;
+            try {
+                await fetch(`${API}/api/queue/add?file_id=${selectedFileId}&prompt=${encodeURIComponent(prompt)}&confidence=${confidence}`, {
+                    method: 'POST'
+                });
+                document.getElementById('queue-panel').style.display = 'block';
+                updateQueueDisplay();
+            } catch (err) {
+                console.error('Add to queue error:', err);
+            }
+        }
+
+        async function addBatchToQueue(items) {
+            if (!selectedFileId) return;
+            try {
+                const res = await fetch(`${API}/api/queue/add-batch?file_id=${selectedFileId}`, {
+                    method: 'POST',
+                    headers: { 'Content-Type': 'application/json' },
+                    body: JSON.stringify(items)
+                });
+                const data = await res.json();
+                document.getElementById('queue-panel').style.display = 'block';
+                updateQueueDisplay();
+                return data;
+            } catch (err) {
+                console.error('Add batch to queue error:', err);
+            }
+        }
 
         // Canvas protection system - prevents spectrograms/waveforms from being cleared
         const protectedCanvases = new Map(); // canvas element -> { snapshot, observer }
@@ -1397,7 +2019,8 @@
                     if (status.status === 'completed') {
                         classificationData = status.result;
                         renderClassification(status.result);
-                        renderAudioSepClassifications(status.result.top_classes);
+                        // Auto-queue all classifications after YAMNet completes
+                        renderAudioSepClassifications(status.result.top_classes, true);
                     } else if (status.status === 'error') {
                         results.innerHTML = `<div style="color: var(--accent-red); padding: 1rem;">${status.message}</div>`;
                     }
@@ -1433,14 +2056,14 @@
             `;
         }
 
-        function renderAudioSepClassifications(classes) {
+        function renderAudioSepClassifications(classes, autoQueue = false) {
             const container = document.getElementById('audiosep-classifications');
             const topClasses = classes.slice(0, 15);
 
             container.innerHTML = `
                 <div class="classification-list">
                     ${topClasses.map((c, i) => `
-                        <div class="classification-item" id="audiosep-item-${i}">
+                        <div class="classification-item" id="audiosep-item-${i}" data-prompt="${c.name}" data-confidence="${c.score}">
                             <div class="classification-info">
                                 <div class="classification-name">${c.name}</div>
                                 <div class="classification-score-bar">
@@ -1449,19 +2072,62 @@
                                 <div class="classification-score">${(c.score * 100).toFixed(1)}% confidence</div>
                             </div>
                             <div class="classification-actions">
-                                <button class="separate-btn" onclick="separateWithAudioSep('${c.name}', ${i})">
-                                    Separate
+                                <button class="separate-btn" onclick="queueSingleItem('${c.name}', ${c.score})">
+                                    + Queue
                                 </button>
                             </div>
                         </div>
                     `).join('')}
                 </div>
-                <div style="margin-top: 1rem; text-align: center;">
-                    <button class="btn btn-primary" onclick="separateAllClassifications()" id="separate-all-btn">
-                        Separate All Classifications
+                <div style="margin-top: 1rem; text-align: center; display: flex; gap: 0.75rem; justify-content: center; flex-wrap: wrap;">
+                    <button class="btn btn-primary" onclick="queueAllClassifications()" id="queue-all-btn" style="background: linear-gradient(135deg, var(--prince-gold) 0%, var(--prince-gold-light) 100%); color: #000;">
+                        ☔ Queue All (${topClasses.length})
+                    </button>
+                    <button class="btn" onclick="separateWithAudioSep('${topClasses[0]?.name || ''}', 0)" id="separate-single-btn" style="background: transparent; border-color: var(--prince-purple-light);">
+                        ▶ Separate Top Only
                     </button>
                 </div>
             `;
+
+            // Auto-queue all if requested
+            if (autoQueue && topClasses.length > 0) {
+                setTimeout(() => queueAllClassifications(), 500);
+            }
+        }
+
+        async function queueSingleItem(prompt, confidence) {
+            const btn = event.target;
+            btn.disabled = true;
+            btn.innerHTML = '✓ Queued';
+            btn.style.background = 'var(--accent-green)';
+            await addToQueue(prompt, confidence);
+        }
+
+        async function queueAllClassifications() {
+            const btn = document.getElementById('queue-all-btn');
+            btn.disabled = true;
+            btn.innerHTML = '☔ Queuing...';
+
+            const items = [];
+            document.querySelectorAll('.classification-item').forEach(el => {
+                items.push({
+                    prompt: el.dataset.prompt,
+                    confidence: parseFloat(el.dataset.confidence)
+                });
+            });
+
+            // Mark all buttons as queued
+            document.querySelectorAll('.classification-item .separate-btn').forEach(btn => {
+                btn.disabled = true;
+                btn.innerHTML = '✓ Queued';
+                btn.style.background = 'var(--accent-green)';
+            });
+
+            await addBatchToQueue(items);
+
+            btn.innerHTML = '✓ All Queued';
+            btn.style.background = 'var(--accent-green)';
+            btn.style.color = '#fff';
         }
 
         async function separateWithAudioSep(className, index) {
@@ -1602,18 +2268,8 @@
         }
 
         async function separateAllClassifications() {
-            const btn = document.getElementById('separate-all-btn');
-            btn.disabled = true;
-            btn.innerHTML = '<div class="loading-spinner"></div> Separating...';
-
-            const buttons = document.querySelectorAll('.classification-item .separate-btn:not(:disabled)');
-            for (let i = 0; i < buttons.length; i++) {
-                buttons[i].click();
-                await new Promise(r => setTimeout(r, 500)); // Stagger requests
-            }
-
-            btn.disabled = false;
-            btn.innerHTML = 'Separate All Classifications';
+            // Redirect to queue-based processing
+            await queueAllClassifications();
         }
 
         // Wavesurfer instances for AudioSep
