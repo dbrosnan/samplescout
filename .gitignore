@@ -86,6 +86,11 @@ samples/output/**/*
 !samples/output/.gitkeep
 !samples/input/.gitkeep
 
+# Web app uploads and outputs (generated at runtime)
+uploads/
+outputs/
+audiosep_model/
+
 # Model weights (downloaded at runtime)
 models/
 *.h5
