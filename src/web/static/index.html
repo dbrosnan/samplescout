@@ -222,6 +222,61 @@
 
         .empty-state-icon { font-size: 4rem; margin-bottom: 1rem; opacity: 0.3; }
 
+        /* Player and YAMNet side-by-side layout */
+        .player-classification-row {
+            display: flex;
+            gap: 1rem;
+            align-items: flex-start;
+            margin-bottom: 1.5rem;
+        }
+        .player-classification-row .audio-player-large {
+            flex: 1;
+            min-width: 0;
+        }
+        .yamnet-card {
+            width: 280px;
+            flex-shrink: 0;
+        }
+        .yamnet-card .card-header {
+            padding: 0.75rem;
+        }
+        .yamnet-card .card-title {
+            font-size: 0.875rem;
+        }
+        .yamnet-card .card-subtitle {
+            font-size: 0.65rem;
+        }
+        .yamnet-card .btn-sm {
+            padding: 0.35rem 0.75rem;
+            font-size: 0.7rem;
+        }
+        .yamnet-card #classification-results {
+            max-height: 380px;
+            overflow-y: auto;
+            padding: 0.5rem;
+        }
+        .yamnet-card .class-item {
+            gap: 0.4rem;
+            padding: 0.2rem 0;
+        }
+        .yamnet-card .class-rank {
+            width: 18px;
+            font-size: 0.65rem;
+        }
+        .yamnet-card .class-name {
+            width: 90px;
+            font-size: 0.7rem;
+        }
+        .yamnet-card .class-bar-container {
+            flex: 1;
+            max-width: 80px;
+            height: 12px;
+        }
+        .yamnet-card .class-score {
+            width: 38px;
+            font-size: 0.65rem;
+        }
+
         .audio-player-large {
             background: linear-gradient(135deg, rgba(59, 130, 246, 0.1) 0%, rgba(139, 92, 246, 0.1) 100%);
             border: 1px solid var(--border-color);
@@ -787,44 +842,47 @@
             </div>
 
             <div id="file-details" style="display: none;">
-                <!-- Audio Player -->
-                <div class="audio-player-large" id="main-player">
-                    <div class="player-header">
-                        <div>
-                            <div class="player-title" id="player-title">Audio File</div>
-                            <div class="player-meta" id="player-meta">0:00 • 44.1kHz</div>
+                <!-- Player and Classification Row -->
+                <div class="player-classification-row">
+                    <!-- Audio Player -->
+                    <div class="audio-player-large" id="main-player">
+                        <div class="player-header">
+                            <div>
+                                <div class="player-title" id="player-title">Audio File</div>
+                                <div class="player-meta" id="player-meta">0:00 • 44.1kHz</div>
+                            </div>
                         </div>
-                    </div>
-                    <!-- Waveform visualization -->
-                    <div class="main-waveform-container" id="main-waveform-container">
-                        <span class="waveform-label">Waveform</span>
-                    </div>
-                    <!-- Spectrogram visualization (3x taller for source file) -->
-                    <div class="main-spectrogram-container" id="main-spectrogram-container">
-                        <span class="spectrogram-label">Spectrogram</span>
-                    </div>
-                    <div class="audio-controls">
-                        <button class="play-btn" id="play-btn">▶</button>
-                        <div class="progress-bar" id="progress-bar">
-                            <div class="progress-fill" id="progress-fill"></div>
+                        <!-- Waveform visualization -->
+                        <div class="main-waveform-container" id="main-waveform-container">
+                            <span class="waveform-label">Waveform</span>
                         </div>
-                        <div class="time-display" id="time-display">0:00 / 0:00</div>
+                        <!-- Spectrogram visualization (3x taller for source file) -->
+                        <div class="main-spectrogram-container" id="main-spectrogram-container">
+                            <span class="spectrogram-label">Spectrogram</span>
+                        </div>
+                        <div class="audio-controls">
+                            <button class="play-btn" id="play-btn">▶</button>
+                            <div class="progress-bar" id="progress-bar">
+                                <div class="progress-fill" id="progress-fill"></div>
+                            </div>
+                            <div class="time-display" id="time-display">0:00 / 0:00</div>
+                        </div>
+                        <audio id="main-audio" style="display: none;"></audio>
                     </div>
-                    <audio id="main-audio" style="display: none;"></audio>
-                </div>
 
-                <!-- Classification Card -->
-                <div class="card">
-                    <div class="card-header">
-                        <div>
-                            <div class="card-title">🧠 YAMNet Classification</div>
-                            <div class="card-subtitle">521 audio categories</div>
+                    <!-- Classification Card -->
+                    <div class="card yamnet-card">
+                        <div class="card-header">
+                            <div>
+                                <div class="card-title">🧠 YAMNet</div>
+                                <div class="card-subtitle">521 categories</div>
+                            </div>
+                            <button class="btn btn-primary btn-sm" id="classify-btn" onclick="classifyAudio()">Classify</button>
                         </div>
-                        <button class="btn btn-primary" id="classify-btn" onclick="classifyAudio()">Classify</button>
-                    </div>
-                    <div id="classification-results">
-                        <div style="color: var(--text-muted); font-size: 0.875rem; text-align: center; padding: 1rem;">
-                            Click "Classify" to analyze audio content
+                        <div id="classification-results">
+                            <div style="color: var(--text-muted); font-size: 0.75rem; text-align: center; padding: 0.75rem;">
+                                Click "Classify" to analyze
+                            </div>
                         </div>
                     </div>
                 </div>
@@ -839,13 +897,13 @@
                     </div>
 
                     <div class="separator-tabs">
-                        <button class="separator-tab demucs active" onclick="switchTab('demucs')">
+                        <button class="separator-tab demucs" onclick="switchTab('demucs')">
                             <span class="tab-icon">🎸</span> Demucs
                         </button>
                         <button class="separator-tab spleeter" onclick="switchTab('spleeter')">
                             <span class="tab-icon">⚡</span> Spleeter
                         </button>
-                        <button class="separator-tab audiosep" onclick="switchTab('audiosep')">
+                        <button class="separator-tab audiosep active" onclick="switchTab('audiosep')">
                             <span class="tab-icon">🗣️</span> AudioSep
                         </button>
                         <button class="separator-tab mdxnet" onclick="switchTab('mdxnet')">
@@ -854,7 +912,7 @@
                     </div>
 
                     <!-- Demucs Tab -->
-                    <div class="tab-content active" id="tab-demucs">
+                    <div class="tab-content" id="tab-demucs">
                         <p style="color: var(--text-secondary); font-size: 0.875rem; margin-bottom: 1rem; text-align: center;">
                             High-quality 4-stem separation: drums, bass, vocals, other
                         </p>
@@ -879,7 +937,7 @@
                     </div>
 
                     <!-- AudioSep Tab -->
-                    <div class="tab-content" id="tab-audiosep">
+                    <div class="tab-content active" id="tab-audiosep">
                         <div class="audiosep-intro">
                             <p>AudioSep uses YAMNet classifications to separate each detected sound.</p>
                             <p style="margin-top: 0.5rem;">First classify the audio, then separate individual sounds.</p>
