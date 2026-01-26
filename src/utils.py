@@ -332,3 +332,194 @@ def detect_bpm(audio: np.ndarray, sr: int) -> float:
     """
     tempo, _ = librosa.beat.beat_track(y=audio, sr=sr)
     return float(tempo)
+
+
+def compute_spectral_centroid(audio: np.ndarray, sr: int) -> float:
+    """
+    Compute the spectral centroid (brightness) of audio.
+
+    Args:
+        audio: Audio waveform
+        sr: Sample rate
+
+    Returns:
+        Mean spectral centroid in Hz
+    """
+    centroid = librosa.feature.spectral_centroid(y=audio, sr=sr)
+    return float(np.mean(centroid))
+
+
+def compute_audio_similarity(
+    source: np.ndarray,
+    separated: np.ndarray,
+    sr: int,
+) -> dict:
+    """
+    Compute similarity metrics between source and separated audio.
+
+    Args:
+        source: Source audio waveform
+        separated: Separated audio waveform
+        sr: Sample rate
+
+    Returns:
+        Dictionary with similarity metrics
+    """
+    # Ensure same length
+    min_len = min(len(source), len(separated))
+    source = source[:min_len]
+    separated = separated[:min_len]
+
+    # Energy metrics
+    source_energy = np.sum(source ** 2)
+    separated_energy = np.sum(separated ** 2)
+    energy_ratio = separated_energy / source_energy if source_energy > 0 else 0
+
+    # RMS comparison
+    source_rms = compute_rms(source)
+    separated_rms = compute_rms(separated)
+    rms_ratio = separated_rms / source_rms if source_rms > 0 else 0
+
+    # Correlation coefficient
+    if np.std(source) > 0 and np.std(separated) > 0:
+        correlation = float(np.corrcoef(source, separated)[0, 1])
+    else:
+        correlation = 0.0
+
+    # Spectral similarity using mel spectrograms
+    n_mels = 128
+    source_mel = librosa.feature.melspectrogram(y=source, sr=sr, n_mels=n_mels)
+    separated_mel = librosa.feature.melspectrogram(y=separated, sr=sr, n_mels=n_mels)
+
+    # Flatten and compute cosine similarity
+    source_flat = source_mel.flatten()
+    separated_flat = separated_mel.flatten()
+
+    # Cosine similarity
+    dot_product = np.dot(source_flat, separated_flat)
+    norm_source = np.linalg.norm(source_flat)
+    norm_separated = np.linalg.norm(separated_flat)
+    spectral_similarity = dot_product / (norm_source * norm_separated) if (norm_source > 0 and norm_separated > 0) else 0
+
+    # Spectral centroid comparison (brightness)
+    source_centroid = compute_spectral_centroid(source, sr)
+    separated_centroid = compute_spectral_centroid(separated, sr)
+    centroid_shift = separated_centroid - source_centroid
+
+    # Isolation score: how different is the separated audio from source
+    # Higher = more different = better isolation
+    isolation_score = 1.0 - abs(correlation)
+
+    return {
+        "energy_ratio": float(energy_ratio),
+        "energy_percent": float(energy_ratio * 100),
+        "rms_ratio": float(rms_ratio),
+        "correlation": float(correlation),
+        "spectral_similarity": float(spectral_similarity),
+        "source_centroid_hz": float(source_centroid),
+        "separated_centroid_hz": float(separated_centroid),
+        "centroid_shift_hz": float(centroid_shift),
+        "isolation_score": float(isolation_score),
+    }
+
+
+def compute_separation_insights(
+    source_path: Union[str, Path],
+    separated_path: Union[str, Path],
+) -> dict:
+    """
+    Compute comprehensive insights comparing source and separated audio.
+
+    Args:
+        source_path: Path to source audio file
+        separated_path: Path to separated audio file
+
+    Returns:
+        Dictionary with separation insights and quality metrics
+    """
+    # Load both audio files at same sample rate
+    source, sr = load_audio(source_path, sr=22050, mono=True)
+    separated, _ = load_audio(separated_path, sr=22050, mono=True)
+
+    # Get basic info
+    source_info = get_audio_info(source_path)
+    separated_info = get_audio_info(separated_path)
+
+    # Compute similarity metrics
+    similarity = compute_audio_similarity(source, separated, sr)
+
+    # Compute additional metrics
+    source_peak = float(np.max(np.abs(source)))
+    separated_peak = float(np.max(np.abs(separated)))
+
+    # Zero crossing rate (texture/noisiness)
+    source_zcr = float(np.mean(librosa.feature.zero_crossing_rate(source)))
+    separated_zcr = float(np.mean(librosa.feature.zero_crossing_rate(separated)))
+
+    return {
+        "source": {
+            "duration": source_info["duration"],
+            "rms": float(compute_rms(source)),
+            "peak": source_peak,
+            "zcr": source_zcr,
+        },
+        "separated": {
+            "duration": separated_info["duration"],
+            "rms": float(compute_rms(separated)),
+            "peak": separated_peak,
+            "zcr": separated_zcr,
+        },
+        "comparison": {
+            **similarity,
+            "peak_ratio": separated_peak / source_peak if source_peak > 0 else 0,
+            "zcr_ratio": separated_zcr / source_zcr if source_zcr > 0 else 0,
+        },
+        "quality": {
+            # Interpretation of metrics
+            "extraction_strength": _interpret_extraction_strength(similarity["energy_ratio"]),
+            "isolation_quality": _interpret_isolation(similarity["isolation_score"]),
+            "spectral_match": _interpret_spectral_match(similarity["spectral_similarity"]),
+        },
+    }
+
+
+def _interpret_extraction_strength(energy_ratio: float) -> str:
+    """Interpret the energy ratio as extraction strength."""
+    if energy_ratio < 0.05:
+        return "minimal"
+    elif energy_ratio < 0.15:
+        return "low"
+    elif energy_ratio < 0.35:
+        return "moderate"
+    elif energy_ratio < 0.60:
+        return "strong"
+    else:
+        return "dominant"
+
+
+def _interpret_isolation(isolation_score: float) -> str:
+    """Interpret the isolation score."""
+    if isolation_score < 0.3:
+        return "poor"
+    elif isolation_score < 0.5:
+        return "fair"
+    elif isolation_score < 0.7:
+        return "good"
+    elif isolation_score < 0.85:
+        return "very good"
+    else:
+        return "excellent"
+
+
+def _interpret_spectral_match(spectral_similarity: float) -> str:
+    """Interpret spectral similarity."""
+    if spectral_similarity < 0.3:
+        return "very different"
+    elif spectral_similarity < 0.5:
+        return "different"
+    elif spectral_similarity < 0.7:
+        return "similar"
+    elif spectral_similarity < 0.85:
+        return "very similar"
+    else:
+        return "nearly identical"

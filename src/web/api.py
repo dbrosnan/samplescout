@@ -111,6 +111,7 @@ class QueueStatus(BaseModel):
     completed_items: int
     current_item: Optional[QueueItem]
     queue: List[QueueItem]
+    all_items: List[QueueItem]  # All items including completed
     overall_progress: float
 
 
@@ -714,6 +715,7 @@ async def get_queue_status():
             completed_items=len(completed),
             current_item=current_queue_item,
             queue=list(audiosep_queue),
+            all_items=all_items,
             overall_progress=overall_progress,
         )
 
@@ -817,6 +819,100 @@ async def list_separators():
             },
         ]
     }
+
+
+# ============================================================================
+# Separation Insights
+# ============================================================================
+
+@app.get("/api/insights/batch/{file_id}")
+async def get_batch_insights(file_id: str):
+    """
+    Get insights for all separated stems of a file.
+
+    Returns insights for all AudioSep separations for the given file.
+    """
+    if file_id not in audio_files:
+        raise HTTPException(404, "File not found")
+
+    audio_file = audio_files[file_id]
+    source_path = PROJECT_ROOT / audio_file.path.lstrip("/")
+
+    # Find all AudioSep outputs for this file
+    audiosep_dir = OUTPUT_DIR / file_id / "audiosep"
+    if not audiosep_dir.exists():
+        return {"file_id": file_id, "insights": []}
+
+    results = []
+    from src.utils import compute_separation_insights
+
+    for stem_dir in audiosep_dir.iterdir():
+        if stem_dir.is_dir():
+            stem_name = stem_dir.name
+            wav_file = stem_dir / f"{stem_name}.wav"
+            if wav_file.exists():
+                try:
+                    insights = compute_separation_insights(source_path, wav_file)
+                    results.append({
+                        "stem_name": stem_name,
+                        "insights": insights,
+                    })
+                except Exception as e:
+                    results.append({
+                        "stem_name": stem_name,
+                        "error": str(e),
+                    })
+
+    return {
+        "file_id": file_id,
+        "total_stems": len(results),
+        "insights": results,
+    }
+
+
+@app.get("/api/insights/{file_id}/{stem_name}")
+async def get_separation_insights(file_id: str, stem_name: str, separator: str = "audiosep"):
+    """
+    Get insights comparing separated audio with source.
+
+    Args:
+        file_id: ID of the uploaded audio file
+        stem_name: Name of the stem (e.g., "Car", "Siren", "vocals")
+        separator: Separator used (default: audiosep)
+
+    Returns:
+        Comparison metrics and quality insights
+    """
+    if file_id not in audio_files:
+        raise HTTPException(404, "File not found")
+
+    audio_file = audio_files[file_id]
+    source_path = PROJECT_ROOT / audio_file.path.lstrip("/")
+
+    # Find the separated file
+    if separator == "audiosep":
+        # AudioSep uses prompt-based naming
+        import re
+        safe_name = re.sub(r'[^a-zA-Z0-9]', '_', stem_name)[:30]
+        separated_path = OUTPUT_DIR / file_id / "audiosep" / safe_name / f"{safe_name}.wav"
+    else:
+        # Other separators (demucs, spleeter)
+        separated_path = OUTPUT_DIR / file_id / separator / f"{stem_name}.wav"
+
+    if not separated_path.exists():
+        raise HTTPException(404, f"Separated file not found: {stem_name}")
+
+    try:
+        from src.utils import compute_separation_insights
+        insights = compute_separation_insights(source_path, separated_path)
+        return {
+            "file_id": file_id,
+            "stem_name": stem_name,
+            "separator": separator,
+            "insights": insights,
+        }
+    except Exception as e:
+        raise HTTPException(500, f"Error computing insights: {str(e)}")
 
 
 # ============================================================================

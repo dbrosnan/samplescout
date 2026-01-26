@@ -1057,6 +1057,76 @@
             color: var(--text-muted);
         }
 
+        /* Separation Insights */
+        .separation-insights {
+            margin-top: 0.75rem;
+            padding: 0.6rem;
+            background: rgba(186, 135, 255, 0.08);
+            border-radius: 6px;
+            border: 1px solid rgba(186, 135, 255, 0.15);
+        }
+        .insights-header {
+            display: flex;
+            justify-content: space-between;
+            align-items: center;
+            margin-bottom: 0.5rem;
+        }
+        .insights-title {
+            font-size: 0.7rem;
+            font-weight: 600;
+            color: var(--prince-purple-light);
+            text-transform: uppercase;
+            letter-spacing: 0.5px;
+        }
+        .insights-quality {
+            display: flex;
+            gap: 0.5rem;
+        }
+        .quality-badge {
+            font-size: 0.6rem;
+            padding: 0.15rem 0.4rem;
+            border-radius: 4px;
+            font-weight: 500;
+        }
+        .quality-badge.excellent { background: rgba(16, 185, 129, 0.2); color: #10b981; }
+        .quality-badge.good { background: rgba(59, 130, 246, 0.2); color: #3b82f6; }
+        .quality-badge.fair { background: rgba(245, 158, 11, 0.2); color: #f59e0b; }
+        .quality-badge.poor { background: rgba(239, 68, 68, 0.2); color: #ef4444; }
+        .insights-metrics {
+            display: grid;
+            grid-template-columns: repeat(3, 1fr);
+            gap: 0.5rem;
+        }
+        .insight-metric {
+            text-align: center;
+        }
+        .insight-value {
+            font-size: 0.85rem;
+            font-weight: 600;
+            color: var(--text-primary);
+        }
+        .insight-label {
+            font-size: 0.55rem;
+            color: var(--text-muted);
+            text-transform: uppercase;
+            letter-spacing: 0.3px;
+        }
+        .insight-bar {
+            height: 3px;
+            background: rgba(255,255,255,0.1);
+            border-radius: 2px;
+            margin-top: 0.25rem;
+            overflow: hidden;
+        }
+        .insight-bar-fill {
+            height: 100%;
+            border-radius: 2px;
+            transition: width 0.5s ease;
+        }
+        .insight-bar-fill.energy { background: linear-gradient(90deg, #3b82f6, #8b5cf6); }
+        .insight-bar-fill.isolation { background: linear-gradient(90deg, #10b981, #34d399); }
+        .insight-bar-fill.spectral { background: linear-gradient(90deg, #f59e0b, #fbbf24); }
+
         /* Loading */
         .loading-spinner {
             width: 20px;
@@ -1232,12 +1302,12 @@
                     </div>
                 </div>
 
-                <!-- ═══ PURPLE RAIN PROCESSING QUEUE ═══ -->
+                <!-- ═══ AUDIO SEPARATION QUEUE ═══ -->
                 <div class="queue-panel" id="queue-panel" style="display: none;">
                     <div class="queue-header">
                         <div class="queue-title">
                             <span class="queue-title-icon">☔</span>
-                            Purple Rain Queue
+                            Audio Separation Queue
                         </div>
                         <div class="queue-controls">
                             <button class="queue-btn pause-btn" id="queue-pause-btn" onclick="toggleQueuePause()">
@@ -1365,7 +1435,8 @@
         // ═══════════════════════════════════════════════════════════════════
         let queuePaused = false;
         let queuePollingInterval = null;
-        let queueItems = [];  // Local copy of queue items
+        let queueItems = [];  // Local copy of queue items (pending)
+        let allQueueItems = [];  // All queue items including completed
 
         document.addEventListener('DOMContentLoaded', () => {
             loadFiles();
@@ -1390,6 +1461,7 @@
 
                 queuePaused = status.is_paused;
                 queueItems = [...(status.queue || [])];
+                allQueueItems = [...(status.all_items || [])];
 
                 // Add completed items from current_item if processing
                 if (status.current_item) {
@@ -1464,11 +1536,17 @@
                 }
 
                 // Check for newly completed items and render their results
-                Object.values(status).forEach(item => {
+                // Check current_item if it just completed
+                if (status.current_item && status.current_item.status === 'completed' && status.current_item.result) {
+                    showCompletedQueueItemResult(status.current_item);
+                }
+
+                // Also check all completed items from the queue
+                for (const item of allQueueItems) {
                     if (item && item.status === 'completed' && item.result) {
                         showCompletedQueueItemResult(item);
                     }
-                });
+                }
 
             } catch (err) {
                 console.error('Queue poll error:', err);
@@ -1523,9 +1601,81 @@
                         requestAnimationFrame(() => {
                             setTimeout(() => initWavesurferWithSpectrogram(wavesurferId, spectrogramId, stemPath), 100);
                         });
+
+                        // Fetch and display insights
+                        fetchAndDisplayInsights(el, item.file_id, item.prompt);
                     }
                 }
             });
+        }
+
+        async function fetchAndDisplayInsights(element, fileId, stemName) {
+            try {
+                const res = await fetch(`${API}/api/insights/${fileId}/${encodeURIComponent(stemName)}?separator=audiosep`);
+                if (!res.ok) return;
+
+                const data = await res.json();
+                const insights = data.insights;
+
+                // Create insights display
+                const insightsHtml = createInsightsHtml(insights);
+
+                // Check if insights already exist
+                if (!element.querySelector('.separation-insights')) {
+                    element.insertAdjacentHTML('beforeend', insightsHtml);
+                }
+            } catch (err) {
+                console.log('Could not fetch insights:', err);
+            }
+        }
+
+        function createInsightsHtml(insights) {
+            const quality = insights.quality;
+            const comparison = insights.comparison;
+
+            // Determine badge class
+            const isolationClass = quality.isolation_quality === 'excellent' || quality.isolation_quality === 'very good' ? 'excellent' :
+                                   quality.isolation_quality === 'good' ? 'good' :
+                                   quality.isolation_quality === 'fair' ? 'fair' : 'poor';
+
+            const extractionClass = quality.extraction_strength === 'dominant' || quality.extraction_strength === 'strong' ? 'excellent' :
+                                    quality.extraction_strength === 'moderate' ? 'good' :
+                                    quality.extraction_strength === 'low' ? 'fair' : 'poor';
+
+            return `
+                <div class="separation-insights">
+                    <div class="insights-header">
+                        <span class="insights-title">Separation Analysis</span>
+                        <div class="insights-quality">
+                            <span class="quality-badge ${extractionClass}">${quality.extraction_strength}</span>
+                            <span class="quality-badge ${isolationClass}">${quality.isolation_quality} isolation</span>
+                        </div>
+                    </div>
+                    <div class="insights-metrics">
+                        <div class="insight-metric">
+                            <div class="insight-value">${comparison.energy_percent.toFixed(0)}%</div>
+                            <div class="insight-label">Energy Extracted</div>
+                            <div class="insight-bar">
+                                <div class="insight-bar-fill energy" style="width: ${Math.min(100, comparison.energy_percent)}%"></div>
+                            </div>
+                        </div>
+                        <div class="insight-metric">
+                            <div class="insight-value">${(comparison.isolation_score * 100).toFixed(1)}%</div>
+                            <div class="insight-label">Isolation</div>
+                            <div class="insight-bar">
+                                <div class="insight-bar-fill isolation" style="width: ${Math.min(100, comparison.isolation_score * 100)}%"></div>
+                            </div>
+                        </div>
+                        <div class="insight-metric">
+                            <div class="insight-value">${comparison.centroid_shift_hz > 0 ? '+' : ''}${comparison.centroid_shift_hz.toFixed(0)}Hz</div>
+                            <div class="insight-label">Brightness Shift</div>
+                            <div class="insight-bar">
+                                <div class="insight-bar-fill spectral" style="width: ${Math.min(100, Math.abs(comparison.centroid_shift_hz) / 5)}%"></div>
+                            </div>
+                        </div>
+                    </div>
+                </div>
+            `;
         }
 
         function updateAudioSepItemProgress(item) {
