@@ -187,7 +187,7 @@ class YAMNetClassifier:
         self,
         audio_path: str,
         top_k: int = 10,
-        granularity: float = 0.96,
+        granularity: float = 0.48,
     ) -> dict:
         """
         Classify audio and return temporal (per-frame) results with timing metadata.
@@ -195,8 +195,9 @@ class YAMNetClassifier:
         Args:
             audio_path: Path to audio file
             top_k: Number of top categories to return per frame
-            granularity: Time resolution in seconds (0.48, 0.96, 1.92, 3.84)
+            granularity: Time resolution in seconds (0.24, 0.48, 0.96, 1.92, 3.84)
                          Native frame rate is ~0.48s (patch_hop_seconds)
+                         Sub-native rates duplicate frames for finer visual resolution
 
         Returns:
             Dictionary with temporal classification data:
@@ -225,20 +226,31 @@ class YAMNetClassifier:
         native_frame_duration = 0.48
         num_native_frames = scores_np.shape[0]
 
-        # Calculate frames to average based on granularity
-        frames_to_average = max(1, int(round(granularity / native_frame_duration)))
-        actual_frame_duration = frames_to_average * native_frame_duration
+        # Handle sub-native granularity (finer than 0.48s) by duplicating frames
+        if granularity < native_frame_duration:
+            duplication_factor = int(round(native_frame_duration / granularity))
+            actual_frame_duration = native_frame_duration / duplication_factor
+            # Duplicate each frame
+            expanded_scores = []
+            for frame_scores in scores_np:
+                for _ in range(duplication_factor):
+                    expanded_scores.append(frame_scores)
+            scores_np = np.array(expanded_scores)
+        else:
+            # Calculate frames to average based on granularity
+            frames_to_average = max(1, int(round(granularity / native_frame_duration)))
+            actual_frame_duration = frames_to_average * native_frame_duration
 
-        # Average adjacent frames for coarser granularity
-        if frames_to_average > 1:
-            num_output_frames = num_native_frames // frames_to_average
-            averaged_scores = []
-            for i in range(num_output_frames):
-                start_idx = i * frames_to_average
-                end_idx = start_idx + frames_to_average
-                avg_scores = np.mean(scores_np[start_idx:end_idx], axis=0)
-                averaged_scores.append(avg_scores)
-            scores_np = np.array(averaged_scores)
+            # Average adjacent frames for coarser granularity
+            if frames_to_average > 1:
+                num_output_frames = num_native_frames // frames_to_average
+                averaged_scores = []
+                for i in range(num_output_frames):
+                    start_idx = i * frames_to_average
+                    end_idx = start_idx + frames_to_average
+                    avg_scores = np.mean(scores_np[start_idx:end_idx], axis=0)
+                    averaged_scores.append(avg_scores)
+                scores_np = np.array(averaged_scores)
 
         # Track unique categories across all frames
         all_category_indices = set()

@@ -1500,8 +1500,9 @@
                             <div class="temporal-controls">
                                 <label>Time Resolution:</label>
                                 <select id="granularity-select" onchange="changeGranularity(this.value)">
-                                    <option value="0.48">Fine (~0.5s)</option>
-                                    <option value="0.96" selected>Standard (~1s)</option>
+                                    <option value="0.24">Extra Fine (~0.25s)</option>
+                                    <option value="0.48" selected>Fine (~0.5s)</option>
+                                    <option value="0.96">Standard (~1s)</option>
                                     <option value="1.92">Coarse (~2s)</option>
                                     <option value="3.84">Very Coarse (~4s)</option>
                                 </select>
@@ -1510,7 +1511,7 @@
                                     <div class="temporal-legend-gradient"></div>
                                     <span>High</span>
                                 </div>
-                                <span id="temporal-info">Each segment = 0.96 seconds</span>
+                                <span id="temporal-info">Each segment = 0.48 seconds</span>
                             </div>
                             <div class="temporal-heatmap-container" id="temporal-heatmap-container">
                                 <span class="waveform-label">Classification Timeline</span>
@@ -2508,7 +2509,7 @@
                         // Auto-queue all classifications after YAMNet completes
                         renderAudioSepClassifications(status.result.top_classes, true);
                         // Load temporal (timeline) classifications
-                        const granularity = parseFloat(document.getElementById('granularity-select')?.value || '0.96');
+                        const granularity = parseFloat(document.getElementById('granularity-select')?.value || '0.48');
                         loadTemporalClassifications(selectedFileId, granularity);
                     } else if (status.status === 'error') {
                         results.innerHTML = `<div style="color: var(--accent-red); padding: 1rem;">${status.message}</div>`;

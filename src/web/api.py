@@ -470,7 +470,7 @@ async def get_job_status(job_id: str):
 async def classify_temporal(
     file_id: str,
     top_k: int = 10,
-    granularity: float = 0.96,
+    granularity: float = 0.48,
 ):
     """
     Classify audio temporally, returning per-frame classifications with timing.
@@ -478,7 +478,7 @@ async def classify_temporal(
     Args:
         file_id: ID of the uploaded audio file
         top_k: Number of top categories per frame (default: 10)
-        granularity: Time resolution in seconds (0.48, 0.96, 1.92, 3.84)
+        granularity: Time resolution in seconds (0.24, 0.48, 0.96, 1.92, 3.84)
 
     Returns:
         Temporal classification data with frames, categories, and timing metadata
@@ -487,7 +487,7 @@ async def classify_temporal(
         raise HTTPException(404, "File not found")
 
     # Validate granularity
-    valid_granularities = [0.48, 0.96, 1.92, 3.84]
+    valid_granularities = [0.24, 0.48, 0.96, 1.92, 3.84]
     if granularity not in valid_granularities:
         raise HTTPException(400, f"Invalid granularity. Use: {valid_granularities}")
 
