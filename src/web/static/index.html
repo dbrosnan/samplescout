@@ -1127,6 +1127,73 @@
         .insight-bar-fill.isolation { background: linear-gradient(90deg, #10b981, #34d399); }
         .insight-bar-fill.spectral { background: linear-gradient(90deg, #f59e0b, #fbbf24); }
 
+        /* Variance row */
+        .insights-variance {
+            margin-top: 0.5rem;
+            padding-top: 0.5rem;
+            border-top: 1px solid rgba(186, 135, 255, 0.1);
+            display: grid;
+            grid-template-columns: repeat(3, 1fr);
+            gap: 0.5rem;
+        }
+        .variance-item {
+            text-align: center;
+        }
+        .variance-value {
+            font-size: 0.7rem;
+            font-weight: 600;
+        }
+        .variance-value.positive { color: #10b981; }
+        .variance-value.negative { color: #ef4444; }
+        .variance-value.neutral { color: var(--text-muted); }
+        .variance-label {
+            font-size: 0.5rem;
+            color: var(--text-muted);
+            text-transform: uppercase;
+        }
+
+        /* Source Audio Stats */
+        .source-stats {
+            margin-top: 0.75rem;
+            padding: 0.75rem;
+            background: rgba(59, 130, 246, 0.08);
+            border-radius: 8px;
+            border: 1px solid rgba(59, 130, 246, 0.15);
+        }
+        .source-stats-header {
+            margin-bottom: 0.5rem;
+        }
+        .source-stats-title {
+            font-size: 0.7rem;
+            font-weight: 600;
+            color: #3b82f6;
+            text-transform: uppercase;
+            letter-spacing: 0.5px;
+        }
+        .source-stats-metrics {
+            display: grid;
+            grid-template-columns: repeat(4, 1fr);
+            gap: 0.75rem;
+        }
+        .source-metric {
+            text-align: center;
+            padding: 0.5rem;
+            background: rgba(255, 255, 255, 0.03);
+            border-radius: 6px;
+        }
+        .source-metric-value {
+            font-size: 0.9rem;
+            font-weight: 600;
+            color: var(--text-primary);
+        }
+        .source-metric-label {
+            font-size: 0.55rem;
+            color: var(--text-muted);
+            text-transform: uppercase;
+            letter-spacing: 0.3px;
+            margin-top: 0.2rem;
+        }
+
         /* Loading */
         .loading-spinner {
             width: 20px;
@@ -1283,6 +1350,30 @@
                             <div class="time-display" id="time-display">0:00 / 0:00</div>
                         </div>
                         <audio id="main-audio" style="display: none;"></audio>
+                        <!-- Source Audio Stats -->
+                        <div class="source-stats" id="source-stats" style="display: none;">
+                            <div class="source-stats-header">
+                                <span class="source-stats-title">Source Audio Analysis</span>
+                            </div>
+                            <div class="source-stats-metrics">
+                                <div class="source-metric">
+                                    <div class="source-metric-value" id="source-rms">--</div>
+                                    <div class="source-metric-label">RMS Energy</div>
+                                </div>
+                                <div class="source-metric">
+                                    <div class="source-metric-value" id="source-peak">--</div>
+                                    <div class="source-metric-label">Peak Level</div>
+                                </div>
+                                <div class="source-metric">
+                                    <div class="source-metric-value" id="source-centroid">--</div>
+                                    <div class="source-metric-label">Brightness (Hz)</div>
+                                </div>
+                                <div class="source-metric">
+                                    <div class="source-metric-value" id="source-zcr">--</div>
+                                    <div class="source-metric-label">Zero-Cross Rate</div>
+                                </div>
+                            </div>
+                        </div>
                     </div>
 
                     <!-- Classification Card -->
@@ -1632,6 +1723,8 @@
         function createInsightsHtml(insights) {
             const quality = insights.quality;
             const comparison = insights.comparison;
+            const source = insights.source;
+            const separated = insights.separated;
 
             // Determine badge class
             const isolationClass = quality.isolation_quality === 'excellent' || quality.isolation_quality === 'very good' ? 'excellent' :
@@ -1641,6 +1734,17 @@
             const extractionClass = quality.extraction_strength === 'dominant' || quality.extraction_strength === 'strong' ? 'excellent' :
                                     quality.extraction_strength === 'moderate' ? 'good' :
                                     quality.extraction_strength === 'low' ? 'fair' : 'poor';
+
+            // Calculate variance from source
+            const rmsVariance = ((separated.rms - source.rms) / source.rms * 100);
+            const peakVariance = ((separated.peak - source.peak) / source.peak * 100);
+            const zcrVariance = ((separated.zcr - source.zcr) / source.zcr * 100);
+
+            const formatVariance = (val) => {
+                const sign = val >= 0 ? '+' : '';
+                const cls = Math.abs(val) < 5 ? 'neutral' : (val >= 0 ? 'positive' : 'negative');
+                return `<span class="variance-value ${cls}">${sign}${val.toFixed(1)}%</span>`;
+            };
 
             return `
                 <div class="separation-insights">
@@ -1672,6 +1776,20 @@
                             <div class="insight-bar">
                                 <div class="insight-bar-fill spectral" style="width: ${Math.min(100, Math.abs(comparison.centroid_shift_hz) / 5)}%"></div>
                             </div>
+                        </div>
+                    </div>
+                    <div class="insights-variance">
+                        <div class="variance-item">
+                            ${formatVariance(rmsVariance)}
+                            <div class="variance-label">RMS vs Source</div>
+                        </div>
+                        <div class="variance-item">
+                            ${formatVariance(peakVariance)}
+                            <div class="variance-label">Peak vs Source</div>
+                        </div>
+                        <div class="variance-item">
+                            ${formatVariance(zcrVariance)}
+                            <div class="variance-label">Texture vs Source</div>
                         </div>
                     </div>
                 </div>
@@ -1941,6 +2059,37 @@
             document.getElementById('demucs-results').innerHTML = '';
             document.getElementById('mdxnet-results').innerHTML = '';
             document.getElementById('audiosep-classifications').innerHTML = `<div style="color: var(--text-muted); text-align: center; padding: 2rem;">Classify the audio first to see detected sounds</div>`;
+
+            // Fetch and display source audio stats
+            fetchSourceStats(selectedFileId);
+        }
+
+        // Store source stats for variance calculations
+        let sourceStats = null;
+
+        async function fetchSourceStats(fileId) {
+            const statsContainer = document.getElementById('source-stats');
+            try {
+                const res = await fetch(`${API}/api/source-stats/${fileId}`);
+                if (!res.ok) {
+                    statsContainer.style.display = 'none';
+                    return;
+                }
+
+                const data = await res.json();
+                sourceStats = data.stats;
+
+                // Display source stats
+                document.getElementById('source-rms').textContent = (sourceStats.rms * 100).toFixed(1) + '%';
+                document.getElementById('source-peak').textContent = (sourceStats.peak * 100).toFixed(1) + '%';
+                document.getElementById('source-centroid').textContent = sourceStats.centroid_hz.toFixed(0);
+                document.getElementById('source-zcr').textContent = (sourceStats.zcr * 100).toFixed(2) + '%';
+
+                statsContainer.style.display = 'block';
+            } catch (err) {
+                console.log('Could not fetch source stats:', err);
+                statsContainer.style.display = 'none';
+            }
         }
 
         // Main player wavesurfer instance

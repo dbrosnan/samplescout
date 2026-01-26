@@ -825,6 +825,46 @@ async def list_separators():
 # Separation Insights
 # ============================================================================
 
+@app.get("/api/source-stats/{file_id}")
+async def get_source_stats(file_id: str):
+    """
+    Get audio analysis stats for the source file.
+    """
+    if file_id not in audio_files:
+        raise HTTPException(404, "File not found")
+
+    audio_file = audio_files[file_id]
+    source_path = PROJECT_ROOT / audio_file.path.lstrip("/")
+
+    try:
+        from src.utils import load_audio, compute_rms, compute_spectral_centroid
+        import numpy as np
+        import librosa
+
+        # Load audio
+        audio, sr = load_audio(source_path, sr=22050, mono=True)
+
+        # Compute stats
+        rms = compute_rms(audio)
+        peak = float(np.max(np.abs(audio)))
+        centroid = compute_spectral_centroid(audio, sr)
+        zcr = float(np.mean(librosa.feature.zero_crossing_rate(audio)))
+
+        return {
+            "file_id": file_id,
+            "stats": {
+                "rms": rms,
+                "peak": peak,
+                "centroid_hz": centroid,
+                "zcr": zcr,
+                "duration": audio_file.duration,
+                "sample_rate": audio_file.sample_rate,
+            }
+        }
+    except Exception as e:
+        raise HTTPException(500, f"Error computing stats: {str(e)}")
+
+
 @app.get("/api/insights/batch/{file_id}")
 async def get_batch_insights(file_id: str):
     """
