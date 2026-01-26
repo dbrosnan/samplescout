@@ -852,6 +852,106 @@
             overflow: hidden;
             text-overflow: ellipsis;
         }
+
+        /* Refresh button in temporal controls */
+        .temporal-refresh-btn {
+            padding: 0.4rem 0.75rem;
+            font-size: 0.7rem;
+            background: linear-gradient(135deg, rgba(106, 13, 173, 0.4) 0%, rgba(61, 0, 102, 0.6) 100%);
+            border: 1px solid var(--prince-purple-light);
+            color: var(--prince-gold-light);
+            border-radius: 6px;
+            cursor: pointer;
+            transition: all 0.2s;
+            text-transform: uppercase;
+            letter-spacing: 0.05em;
+        }
+
+        .temporal-refresh-btn:hover {
+            background: linear-gradient(135deg, rgba(155, 77, 202, 0.5) 0%, rgba(106, 13, 173, 0.7) 100%);
+            border-color: var(--prince-gold);
+            box-shadow: 0 0 12px rgba(212, 175, 55, 0.3);
+        }
+
+        .temporal-refresh-btn:disabled {
+            opacity: 0.5;
+            cursor: not-allowed;
+        }
+
+        /* Inline classification results */
+        .classification-results-inline {
+            display: flex;
+            flex-wrap: wrap;
+            gap: 0.5rem;
+            padding: 0.75rem;
+            background: rgba(0, 0, 0, 0.2);
+            border-radius: 8px;
+            margin-bottom: 0.5rem;
+            min-height: 40px;
+        }
+
+        .classification-results-inline .class-item {
+            display: flex;
+            align-items: center;
+            gap: 0.4rem;
+            padding: 0.3rem 0.6rem;
+            background: linear-gradient(135deg, rgba(106, 13, 173, 0.3) 0%, rgba(61, 0, 102, 0.4) 100%);
+            border: 1px solid rgba(186, 135, 255, 0.2);
+            border-radius: 20px;
+            font-size: 0.7rem;
+            transition: all 0.2s;
+        }
+
+        .classification-results-inline .class-item:hover {
+            border-color: var(--prince-gold);
+            background: linear-gradient(135deg, rgba(155, 77, 202, 0.4) 0%, rgba(106, 13, 173, 0.5) 100%);
+        }
+
+        .classification-results-inline .class-rank {
+            width: 16px;
+            height: 16px;
+            display: flex;
+            align-items: center;
+            justify-content: center;
+            background: var(--prince-gold);
+            color: #000;
+            border-radius: 50%;
+            font-size: 0.6rem;
+            font-weight: 700;
+        }
+
+        .classification-results-inline .class-name {
+            color: var(--text-primary);
+            font-weight: 500;
+        }
+
+        .classification-results-inline .class-score {
+            color: var(--prince-purple-light);
+            font-size: 0.65rem;
+        }
+
+        .classification-loading {
+            display: flex;
+            align-items: center;
+            justify-content: center;
+            gap: 0.75rem;
+            width: 100%;
+            padding: 0.5rem;
+            color: var(--text-muted);
+            font-size: 0.75rem;
+        }
+
+        .classification-empty {
+            display: flex;
+            align-items: center;
+            justify-content: center;
+            width: 100%;
+            padding: 0.5rem;
+            color: var(--text-muted);
+            font-size: 0.75rem;
+            font-style: italic;
+        }
+
         .main-spectrogram-container canvas {
             width: 100% !important;
             height: 100% !important;
@@ -1538,10 +1638,10 @@
                         <div class="main-waveform-container" id="main-waveform-container">
                             <span class="waveform-label">Waveform</span>
                         </div>
-                        <!-- Temporal Heatmap - Classification Timeline -->
-                        <div id="temporal-heatmap-section" style="display: none;">
+                        <!-- Classification Timeline (Combined YAMNet + Temporal Heatmap) -->
+                        <div id="temporal-heatmap-section">
                             <div class="temporal-controls">
-                                <div class="temporal-controls-title">Classification Timeline</div>
+                                <div class="temporal-controls-title">YAMNet Classification</div>
                                 <div class="vintage-knob-container">
                                     <div class="vintage-knob-wrapper">
                                         <webaudio-knob id="granularity-knob"
@@ -1565,10 +1665,19 @@
                                     <div class="temporal-legend-gradient"></div>
                                     <span>High</span>
                                 </div>
-                                <span id="temporal-info">~0.5s segments</span>
+                                <button class="btn btn-sm temporal-refresh-btn" id="classify-btn" onclick="classifyAudio()">
+                                    Refresh
+                                </button>
                             </div>
-                            <div class="temporal-heatmap-container" id="temporal-heatmap-container">
-                                <span class="waveform-label">Classification Timeline</span>
+                            <!-- Classification Results (Top Categories) -->
+                            <div id="classification-results" class="classification-results-inline">
+                                <div class="classification-loading">
+                                    <div class="loading-spinner"></div>
+                                    <span>Analyzing audio...</span>
+                                </div>
+                            </div>
+                            <!-- Temporal Heatmap Canvas -->
+                            <div class="temporal-heatmap-container" id="temporal-heatmap-container" style="display: none;">
                                 <canvas id="temporal-heatmap-canvas"></canvas>
                                 <div class="temporal-heatmap-playhead" id="temporal-playhead"></div>
                                 <div class="temporal-category-labels" id="temporal-category-labels"></div>
@@ -1612,21 +1721,6 @@
                         </div>
                     </div>
 
-                    <!-- Classification Card -->
-                    <div class="card yamnet-card">
-                        <div class="card-header">
-                            <div>
-                                <div class="card-title">🧠 YAMNet</div>
-                                <div class="card-subtitle">521 categories</div>
-                            </div>
-                            <button class="btn btn-primary btn-sm" id="classify-btn" onclick="classifyAudio()">Classify</button>
-                        </div>
-                        <div id="classification-results">
-                            <div style="color: var(--text-muted); font-size: 0.75rem; text-align: center; padding: 0.75rem;">
-                                Click "Classify" to analyze
-                            </div>
-                        </div>
-                    </div>
                 </div>
 
                 <!-- ═══ AUDIO SEPARATION QUEUE ═══ -->
@@ -2255,22 +2349,35 @@
             selectedFileId = id;
             classificationData = null;
             renderFileList();
-            showFileDetails();
+            showFileDetails(false);  // Don't auto-classify yet
 
             try {
                 const res = await fetch(`${API}/api/results/${id}`);
                 const data = await res.json();
                 if (data.classification) {
+                    // Use existing classification results
                     classificationData = data.classification;
                     renderClassification(data.classification);
                     renderAudioSepClassifications(data.classification.top_classes);
+                    // Load temporal heatmap with existing data
+                    const knob = document.getElementById('granularity-knob');
+                    const knobValue = knob ? Math.round(parseFloat(knob.value)) : 0;
+                    const granularity = (granularityMap[knobValue] || granularityMap[0]).value;
+                    loadTemporalClassifications(selectedFileId, granularity);
+                } else {
+                    // No existing results - trigger classification
+                    classifyAudio();
                 }
                 if (data.separations) {
                     data.separations.forEach(sep => {
                         if (sep.separator === 'demucs') renderStems(sep, 'demucs-results');
                     });
                 }
-            } catch (err) { console.error('Results error:', err); }
+            } catch (err) {
+                console.error('Results error:', err);
+                // On error, still try to classify
+                classifyAudio();
+            }
         }
 
         function showEmptyState() {
@@ -2278,7 +2385,7 @@
             document.getElementById('file-details').style.display = 'none';
         }
 
-        function showFileDetails() {
+        function showFileDetails(autoClassify = true) {
             document.getElementById('empty-state').style.display = 'none';
             document.getElementById('file-details').style.display = 'block';
 
@@ -2291,17 +2398,28 @@
             // Initialize main player with wavesurfer and spectrogram
             initMainPlayer(file.path);
 
-            document.getElementById('classification-results').innerHTML = `<div style="color: var(--text-muted); font-size: 0.875rem; text-align: center; padding: 1rem;">Click "Classify" to analyze audio content</div>`;
+            // Show loading state for classification
+            document.getElementById('classification-results').innerHTML = `
+                <div class="classification-loading">
+                    <div class="loading-spinner"></div>
+                    <span>Analyzing audio...</span>
+                </div>
+            `;
             document.getElementById('demucs-results').innerHTML = '';
             document.getElementById('mdxnet-results').innerHTML = '';
-            document.getElementById('audiosep-classifications').innerHTML = `<div style="color: var(--text-muted); text-align: center; padding: 2rem;">Classify the audio first to see detected sounds</div>`;
+            document.getElementById('audiosep-classifications').innerHTML = `<div style="color: var(--text-muted); text-align: center; padding: 2rem;">Classification in progress...</div>`;
 
-            // Reset temporal heatmap
+            // Reset temporal heatmap (but keep section visible)
             temporalData = null;
-            document.getElementById('temporal-heatmap-section').style.display = 'none';
+            document.getElementById('temporal-heatmap-container').style.display = 'none';
 
             // Fetch and display source audio stats
             fetchSourceStats(selectedFileId);
+
+            // Auto-trigger classification if requested
+            if (autoClassify) {
+                setTimeout(() => classifyAudio(), 100);
+            }
         }
 
         // Store source stats for variance calculations
@@ -2547,10 +2665,15 @@
 
             const btn = document.getElementById('classify-btn');
             btn.disabled = true;
-            btn.innerHTML = '<div class="loading-spinner"></div> Classifying...';
+            btn.innerHTML = '...';
 
             const results = document.getElementById('classification-results');
-            results.innerHTML = `<div style="text-align: center; padding: 2rem;"><div class="loading-spinner" style="margin: 0 auto;"></div><div style="margin-top: 1rem; color: var(--text-muted);">Analyzing audio with YAMNet...</div></div>`;
+            results.innerHTML = `
+                <div class="classification-loading">
+                    <div class="loading-spinner"></div>
+                    <span>Analyzing audio...</span>
+                </div>
+            `;
 
             try {
                 const res = await fetch(`${API}/api/classify/${selectedFileId}`, { method: 'POST' });
@@ -2568,38 +2691,35 @@
                         const granularity = (granularityMap[knobValue] || granularityMap[0]).value;
                         loadTemporalClassifications(selectedFileId, granularity);
                     } else if (status.status === 'error') {
-                        results.innerHTML = `<div style="color: var(--accent-red); padding: 1rem;">${status.message}</div>`;
+                        results.innerHTML = `<div class="classification-empty">Error: ${status.message}</div>`;
                     }
                 });
             } catch (err) {
-                results.innerHTML = `<div style="color: var(--accent-red); padding: 1rem;">Error: ${err.message}</div>`;
+                results.innerHTML = `<div class="classification-empty">Error: ${err.message}</div>`;
             }
 
             btn.disabled = false;
-            btn.innerHTML = 'Classify';
+            btn.innerHTML = 'Refresh';
         }
 
         function renderClassification(result) {
             const container = document.getElementById('classification-results');
+            const heatmapContainer = document.getElementById('temporal-heatmap-container');
             const classes = result.top_classes.slice(0, 10);
 
-            container.innerHTML = `
-                <div class="classification-results">
-                    ${classes.map((c, i) => `
-                        <div class="class-item">
-                            <div class="class-rank">${i + 1}</div>
-                            <div class="class-name">${c.name}</div>
-                            <div class="class-bar-container">
-                                <div class="class-bar" style="width: ${c.score * 100}%"></div>
-                            </div>
-                            <div class="class-score">${(c.score * 100).toFixed(1)}%</div>
-                        </div>
-                    `).join('')}
+            // Render inline classification pills
+            container.innerHTML = classes.map((c, i) => `
+                <div class="class-item" title="${c.name}: ${(c.score * 100).toFixed(1)}%">
+                    <div class="class-rank">${i + 1}</div>
+                    <div class="class-name">${c.name}</div>
+                    <div class="class-score">${(c.score * 100).toFixed(0)}%</div>
                 </div>
-                <div style="margin-top: 1rem; font-size: 0.75rem; color: var(--text-muted); text-align: center;">
-                    Processed in ${result.processing_time.toFixed(2)}s
-                </div>
-            `;
+            `).join('');
+
+            // Show the heatmap container
+            if (heatmapContainer) {
+                heatmapContainer.style.display = 'block';
+            }
         }
 
         // ═══════════════════════════════════════════════════════════════════
