@@ -1168,6 +1168,56 @@
             height: 100%;
         }
 
+        /* Category heatmap for AudioSep cards */
+        .category-heatmap-container {
+            position: relative;
+            height: 20px;
+            margin-left: 40px;  /* Align with waveform (after play button) */
+            margin-right: 40px; /* Align with waveform (before download button) */
+            margin-top: 2px;
+            background: rgba(0, 0, 0, 0.3);
+            border-radius: 3px;
+            overflow: hidden;
+        }
+        .category-heatmap-canvas {
+            width: 100%;
+            height: 100%;
+            display: block;
+        }
+        .category-heatmap-label {
+            position: absolute;
+            right: 4px;
+            top: 50%;
+            transform: translateY(-50%);
+            font-size: 7px;
+            color: rgba(255, 255, 255, 0.4);
+            pointer-events: none;
+            z-index: 5;
+            text-transform: uppercase;
+            letter-spacing: 0.3px;
+        }
+
+        /* Extended playhead for waveform + heatmap */
+        .audio-visualization-wrapper {
+            position: relative;
+        }
+        .audio-visualization-wrapper .unified-playhead {
+            position: absolute;
+            top: 0;
+            left: 40px;  /* Start after play button */
+            width: 2px;
+            height: 100%;
+            background: #ffffff;
+            pointer-events: none;
+            z-index: 100;
+            opacity: 0;
+            transition: opacity 0.15s ease;
+            box-shadow: 0 0 4px rgba(255, 255, 255, 0.5);
+        }
+        .audio-visualization-wrapper .unified-playhead.active {
+            opacity: 1;
+        }
+
         .stem-download {
             width: 32px;
             height: 32px;
@@ -2099,20 +2149,28 @@
                     const progressDiv = el.querySelector('.audiosep-progress');
                     if (progressDiv) progressDiv.remove();
 
-                    // Add player with spectrogram
+                    // Add player with heatmap
                     let playerHtml = el.querySelector('.audio-visualization');
                     if (!playerHtml && item.result.stems) {
                         el.classList.add('has-visualization');
                         const stemPath = Object.values(item.result.stems)[0];
                         const wavesurferId = `wavesurfer-q-${item.id}`;
-                        const spectrogramId = `spectrogram-q-${item.id}`;
+                        const heatmapId = `heatmap-q-${item.id}`;
+                        const categoryName = item.prompt;
 
                         el.insertAdjacentHTML('beforeend', `
                             <div class="audio-visualization">
-                                <div class="waveform-spectrogram-row">
-                                    <button class="stem-play-btn" id="play-btn-${wavesurferId}">▶</button>
-                                    <div class="wavesurfer-container" id="${wavesurferId}" style="height: 64px;"></div>
-                                    <a class="stem-download" href="${stemPath}" download title="Download">⬇</a>
+                                <div class="audio-visualization-wrapper" id="viz-wrapper-${item.id}">
+                                    <div class="waveform-spectrogram-row">
+                                        <button class="stem-play-btn" id="play-btn-${wavesurferId}">▶</button>
+                                        <div class="wavesurfer-container" id="${wavesurferId}" style="height: 40px;"></div>
+                                        <a class="stem-download" href="${stemPath}" download title="Download">⬇</a>
+                                    </div>
+                                    <div class="category-heatmap-container" id="${heatmapId}" data-category="${categoryName}">
+                                        <canvas class="category-heatmap-canvas"></canvas>
+                                        <span class="category-heatmap-label">YAMNet Timeline</span>
+                                    </div>
+                                    <div class="unified-playhead" id="playhead-${item.id}"></div>
                                 </div>
                             </div>
                         `);
@@ -2124,9 +2182,11 @@
                             btn.style.background = 'var(--accent-green)';
                         }
 
-                        // Initialize wavesurfer - use simple stem player
+                        // Initialize wavesurfer with category heatmap sync
                         requestAnimationFrame(() => {
-                            setTimeout(() => initStemWavesurfer(wavesurferId, stemPath, '#f59e0b'), 100);
+                            setTimeout(() => {
+                                initStemWavesurferWithHeatmap(wavesurferId, stemPath, '#f59e0b', heatmapId, categoryName, `playhead-${item.id}`);
+                            }, 100);
                         });
 
                         // Fetch and display insights
@@ -4189,6 +4249,193 @@
                 console.error('Stem wavesurfer init failed:', err);
                 showFallbackPlayer(container, audioPath, playBtn, color);
             }
+        }
+
+        // Initialize stem wavesurfer with category-specific heatmap
+        function initStemWavesurferWithHeatmap(containerId, audioPath, color, heatmapId, categoryName, playheadId) {
+            const container = document.getElementById(containerId);
+            const heatmapContainer = document.getElementById(heatmapId);
+            const playhead = document.getElementById(playheadId);
+            const playBtn = document.getElementById(`play-btn-${containerId}`);
+
+            if (!container) return;
+
+            // Check if WaveSurfer is available
+            if (typeof window.WaveSurfer === 'undefined') {
+                showFallbackPlayer(container, audioPath, playBtn, color);
+                return;
+            }
+
+            container.innerHTML = '<div style="color:' + color + ';font-size:9px;padding:4px;">Loading...</div>';
+
+            try {
+                const wavesurfer = window.WaveSurfer.create({
+                    container: container,
+                    waveColor: color,
+                    progressColor: '#ffffff',
+                    cursorColor: 'transparent',
+                    cursorWidth: 0,
+                    barWidth: 2,
+                    barGap: 1,
+                    barRadius: 2,
+                    height: 40,
+                    normalize: true,
+                    url: audioPath,
+                });
+                wavesurferInstances[containerId] = wavesurfer;
+
+                // Update unified playhead position
+                const updateUnifiedPlayhead = (progress) => {
+                    if (!playhead || !container) return;
+                    const waveformRow = container.closest('.waveform-spectrogram-row');
+                    if (!waveformRow) return;
+
+                    // Calculate position based on waveform container width
+                    const waveformRect = container.getBoundingClientRect();
+                    const wrapperRect = container.closest('.audio-visualization-wrapper')?.getBoundingClientRect();
+                    if (!wrapperRect) return;
+
+                    // Playhead position relative to wrapper
+                    const playBtnWidth = 40;
+                    const waveformWidth = waveformRect.width;
+                    const xPos = playBtnWidth + (progress * waveformWidth);
+
+                    playhead.style.left = xPos + 'px';
+                    playhead.classList.add('active');
+                };
+
+                // Play/pause button
+                if (playBtn) {
+                    playBtn.onclick = () => {
+                        wavesurfer.playPause();
+                    };
+                }
+
+                wavesurfer.on('play', () => {
+                    if (playBtn) playBtn.textContent = '⏸';
+                    playhead?.classList.add('active');
+                });
+                wavesurfer.on('pause', () => {
+                    if (playBtn) playBtn.textContent = '▶';
+                });
+                wavesurfer.on('finish', () => {
+                    if (playBtn) playBtn.textContent = '▶';
+                    playhead?.classList.remove('active');
+                });
+
+                wavesurfer.on('ready', () => {
+                    console.log('Stem with heatmap ready:', containerId);
+
+                    // Remove Loading... div
+                    Array.from(container.children).forEach(child => {
+                        if (child.textContent === 'Loading...' || child.textContent.includes('Loading')) {
+                            child.remove();
+                        }
+                    });
+
+                    // Render the category heatmap
+                    if (heatmapContainer && temporalData) {
+                        renderCategoryHeatmap(heatmapContainer, categoryName);
+                    }
+                });
+
+                wavesurfer.on('timeupdate', (time) => {
+                    const duration = wavesurfer.getDuration();
+                    if (duration > 0) {
+                        updateUnifiedPlayhead(time / duration);
+                    }
+                });
+
+                wavesurfer.on('seeking', (time) => {
+                    const duration = wavesurfer.getDuration();
+                    if (duration > 0) {
+                        updateUnifiedPlayhead(time / duration);
+                    }
+                });
+
+                wavesurfer.on('error', (e) => {
+                    console.error('Stem error:', e);
+                    showFallbackPlayer(container, audioPath, playBtn, color);
+                });
+
+                setTimeout(() => {
+                    if (container.innerHTML.includes('Loading')) {
+                        showFallbackPlayer(container, audioPath, playBtn, color);
+                    }
+                }, 8000);
+
+            } catch (err) {
+                console.error('Stem wavesurfer with heatmap init failed:', err);
+                showFallbackPlayer(container, audioPath, playBtn, color);
+            }
+        }
+
+        // Render category-specific heatmap showing YAMNet confidence over time
+        function renderCategoryHeatmap(container, categoryName) {
+            if (!temporalData || !temporalData.frames.length) {
+                console.log('No temporal data for heatmap');
+                return;
+            }
+
+            const canvas = container.querySelector('canvas');
+            if (!canvas) return;
+
+            const rect = container.getBoundingClientRect();
+            const dpr = window.devicePixelRatio || 1;
+            canvas.width = rect.width * dpr;
+            canvas.height = rect.height * dpr;
+            canvas.style.width = rect.width + 'px';
+            canvas.style.height = rect.height + 'px';
+
+            const ctx = canvas.getContext('2d');
+            ctx.scale(dpr, dpr);
+
+            const numCols = temporalData.frames.length;
+            const cellWidth = rect.width / numCols;
+            const cellHeight = rect.height;
+
+            // Clear canvas
+            ctx.clearRect(0, 0, rect.width, rect.height);
+
+            // Find scores for this category across all frames
+            // Also look for related categories (case-insensitive partial match)
+            const categoryLower = categoryName.toLowerCase();
+
+            temporalData.frames.forEach((frame, colIdx) => {
+                let maxScore = 0;
+
+                // Find the best matching score for this category
+                frame.classifications.forEach(c => {
+                    const nameLower = c.name.toLowerCase();
+                    // Exact match or partial match
+                    if (nameLower === categoryLower ||
+                        nameLower.includes(categoryLower) ||
+                        categoryLower.includes(nameLower)) {
+                        maxScore = Math.max(maxScore, c.score);
+                    }
+                });
+
+                const x = colIdx * cellWidth;
+                const color = interpolateHeatmapColor(maxScore);
+                ctx.fillStyle = color;
+                ctx.fillRect(x, 0, cellWidth + 0.5, cellHeight);
+            });
+
+            // Add subtle time markers
+            ctx.strokeStyle = 'rgba(255, 255, 255, 0.1)';
+            ctx.lineWidth = 0.5;
+            const totalDuration = temporalData.frames.length * temporalData.frame_duration;
+            const markerInterval = totalDuration > 30 ? 10 : (totalDuration > 10 ? 5 : 2);
+
+            for (let t = markerInterval; t < totalDuration; t += markerInterval) {
+                const x = (t / totalDuration) * rect.width;
+                ctx.beginPath();
+                ctx.moveTo(x, 0);
+                ctx.lineTo(x, cellHeight);
+                ctx.stroke();
+            }
+
+            console.log(`Rendered heatmap for "${categoryName}" with ${numCols} frames`);
         }
 
         function generateMiniWaveform(color) {
