@@ -604,6 +604,89 @@
             font-size: 0.65rem;
         }
 
+        /* YAMNet Progress Overlay */
+        .yamnet-progress-overlay {
+            background: linear-gradient(135deg, rgba(61, 0, 102, 0.95) 0%, rgba(10, 0, 8, 0.98) 100%);
+            border: 1px solid rgba(212, 175, 55, 0.3);
+            border-radius: 16px;
+            padding: 2rem;
+            margin-bottom: 1.5rem;
+            text-align: center;
+            box-shadow: 0 10px 40px rgba(106, 13, 173, 0.3), inset 0 1px 0 rgba(212, 175, 55, 0.1);
+            animation: yamnet-glow 2s ease-in-out infinite alternate;
+        }
+
+        @keyframes yamnet-glow {
+            from { box-shadow: 0 10px 40px rgba(106, 13, 173, 0.3), inset 0 1px 0 rgba(212, 175, 55, 0.1); }
+            to { box-shadow: 0 15px 50px rgba(155, 77, 202, 0.4), inset 0 1px 0 rgba(212, 175, 55, 0.2); }
+        }
+
+        .yamnet-progress-content {
+            max-width: 400px;
+            margin: 0 auto;
+        }
+
+        .yamnet-progress-icon {
+            font-size: 3rem;
+            margin-bottom: 1rem;
+            animation: yamnet-bounce 1s ease-in-out infinite;
+        }
+
+        @keyframes yamnet-bounce {
+            0%, 100% { transform: translateY(0); }
+            50% { transform: translateY(-10px); }
+        }
+
+        .yamnet-progress-title {
+            font-family: 'Cinzel', serif;
+            font-size: 1.25rem;
+            color: var(--prince-gold);
+            margin-bottom: 0.5rem;
+            letter-spacing: 0.05em;
+        }
+
+        .yamnet-progress-phrase {
+            font-size: 0.9rem;
+            color: var(--text-secondary);
+            margin-bottom: 1.5rem;
+            min-height: 1.5em;
+            font-style: italic;
+            transition: opacity 0.2s ease;
+        }
+
+        .yamnet-progress-bar-container {
+            height: 8px;
+            background: rgba(0, 0, 0, 0.4);
+            border-radius: 4px;
+            overflow: hidden;
+            margin-bottom: 1rem;
+        }
+
+        .yamnet-progress-bar {
+            height: 100%;
+            width: 0%;
+            background: linear-gradient(90deg, var(--prince-purple) 0%, var(--prince-gold) 100%);
+            border-radius: 4px;
+            transition: width 0.3s ease;
+            position: relative;
+        }
+
+        .yamnet-progress-bar::after {
+            content: '';
+            position: absolute;
+            top: 0;
+            left: 0;
+            right: 0;
+            bottom: 0;
+            background: linear-gradient(90deg, transparent 0%, rgba(255,255,255,0.3) 50%, transparent 100%);
+            animation: progress-shine 1.5s infinite;
+        }
+
+        .yamnet-progress-status {
+            font-size: 0.75rem;
+            color: var(--prince-purple-light);
+        }
+
         .audio-player-large {
             background: linear-gradient(135deg, rgba(61, 0, 102, 0.3) 0%, rgba(106, 13, 173, 0.2) 100%);
             border: 1px solid rgba(186, 135, 255, 0.2);
@@ -1612,20 +1695,22 @@
                         </div>
                     </div>
 
-                    <!-- Classification Card -->
-                    <div class="card yamnet-card">
-                        <div class="card-header">
-                            <div>
-                                <div class="card-title">🧠 YAMNet</div>
-                                <div class="card-subtitle">521 categories</div>
-                            </div>
-                            <button class="btn btn-primary btn-sm" id="classify-btn" onclick="classifyAudio()">Classify</button>
+                    <!-- Classification Card (hidden - auto-triggers on file select) -->
+                    <div class="card yamnet-card" id="yamnet-card" style="display: none;">
+                        <div id="classification-results"></div>
+                    </div>
+                </div>
+
+                <!-- YAMNet Classification Progress Overlay -->
+                <div class="yamnet-progress-overlay" id="yamnet-progress-overlay" style="display: none;">
+                    <div class="yamnet-progress-content">
+                        <div class="yamnet-progress-icon">🎧</div>
+                        <div class="yamnet-progress-title">Analyzing Audio</div>
+                        <div class="yamnet-progress-phrase" id="yamnet-phrase">Listening to the frequencies...</div>
+                        <div class="yamnet-progress-bar-container">
+                            <div class="yamnet-progress-bar" id="yamnet-progress-bar"></div>
                         </div>
-                        <div id="classification-results">
-                            <div style="color: var(--text-muted); font-size: 0.75rem; text-align: center; padding: 0.75rem;">
-                                Click "Classify" to analyze
-                            </div>
-                        </div>
+                        <div class="yamnet-progress-status" id="yamnet-status">Initializing YAMNet...</div>
                     </div>
                 </div>
 
@@ -1754,8 +1839,33 @@
         let selectedFileId = null;
         let currentTab = 'demucs';
         let classificationData = null;
+        let yamnetPhraseInterval = null;
 
         const API = '';
+
+        // Cute music production phrases for YAMNet progress
+        const yamnetPhrases = [
+            "Listening to the frequencies...",
+            "Detecting the vibes...",
+            "Analyzing those sweet harmonics...",
+            "Feeling the rhythm...",
+            "Decoding the sonic textures...",
+            "Sampling the audio DNA...",
+            "Parsing the waveforms...",
+            "Checking the sub-bass...",
+            "Scanning for hidden melodies...",
+            "Reading the sonic fingerprint...",
+            "Finding the groove...",
+            "Measuring the warmth...",
+            "Detecting audio sauce levels...",
+            "Consulting the audio oracle...",
+            "Tuning into the signal...",
+            "Classifying the soundscape...",
+            "Extracting the audio essence...",
+            "Processing through neural ears...",
+            "Analyzing timbre characteristics...",
+            "Mapping the frequency spectrum...",
+        ];
 
         // ═══════════════════════════════════════════════════════════════════
         // PURPLE RAIN QUEUE - State Management
@@ -2257,13 +2367,21 @@
             renderFileList();
             showFileDetails();
 
+            let hasExistingClassification = false;
+
             try {
                 const res = await fetch(`${API}/api/results/${id}`);
                 const data = await res.json();
                 if (data.classification) {
+                    hasExistingClassification = true;
                     classificationData = data.classification;
                     renderClassification(data.classification);
                     renderAudioSepClassifications(data.classification.top_classes);
+                    // Also load temporal classifications for existing results
+                    const knob = document.getElementById('granularity-knob');
+                    const knobValue = knob ? Math.round(parseFloat(knob.value)) : 0;
+                    const granularity = (granularityMap[knobValue] || granularityMap[0]).value;
+                    loadTemporalClassifications(id, granularity);
                 }
                 if (data.separations) {
                     data.separations.forEach(sep => {
@@ -2271,6 +2389,11 @@
                     });
                 }
             } catch (err) { console.error('Results error:', err); }
+
+            // Auto-trigger classification if no existing classification
+            if (!hasExistingClassification) {
+                classifyAudio();
+            }
         }
 
         function showEmptyState() {
@@ -2541,42 +2664,107 @@
         }
         // seek function now handled by mainWavesurfer in initMainPlayer
 
+        // ═══════════════════════════════════════════════════════════════════
+        // YAMNet Progress Overlay
+        // ═══════════════════════════════════════════════════════════════════
+        function showYamnetProgress() {
+            const overlay = document.getElementById('yamnet-progress-overlay');
+            const progressBar = document.getElementById('yamnet-progress-bar');
+            const phraseEl = document.getElementById('yamnet-phrase');
+            const statusEl = document.getElementById('yamnet-status');
+
+            overlay.style.display = 'flex';
+            progressBar.style.width = '0%';
+            statusEl.textContent = 'Initializing YAMNet model...';
+
+            // Start cycling through phrases
+            let phraseIndex = Math.floor(Math.random() * yamnetPhrases.length);
+            phraseEl.textContent = yamnetPhrases[phraseIndex];
+
+            yamnetPhraseInterval = setInterval(() => {
+                phraseIndex = (phraseIndex + 1) % yamnetPhrases.length;
+                phraseEl.style.opacity = '0';
+                setTimeout(() => {
+                    phraseEl.textContent = yamnetPhrases[phraseIndex];
+                    phraseEl.style.opacity = '1';
+                }, 200);
+            }, 2500);
+        }
+
+        function updateYamnetProgress(progress, status) {
+            const progressBar = document.getElementById('yamnet-progress-bar');
+            const statusEl = document.getElementById('yamnet-status');
+
+            progressBar.style.width = `${progress * 100}%`;
+            if (status) {
+                statusEl.textContent = status;
+            }
+        }
+
+        function hideYamnetProgress() {
+            const overlay = document.getElementById('yamnet-progress-overlay');
+            overlay.style.display = 'none';
+
+            if (yamnetPhraseInterval) {
+                clearInterval(yamnetPhraseInterval);
+                yamnetPhraseInterval = null;
+            }
+        }
+
         // Classification
         async function classifyAudio() {
             if (!selectedFileId) return;
 
             const btn = document.getElementById('classify-btn');
-            btn.disabled = true;
-            btn.innerHTML = '<div class="loading-spinner"></div> Classifying...';
+            if (btn) {
+                btn.disabled = true;
+                btn.innerHTML = '<div class="loading-spinner"></div> Classifying...';
+            }
 
             const results = document.getElementById('classification-results');
-            results.innerHTML = `<div style="text-align: center; padding: 2rem;"><div class="loading-spinner" style="margin: 0 auto;"></div><div style="margin-top: 1rem; color: var(--text-muted);">Analyzing audio with YAMNet...</div></div>`;
+
+            // Show progress overlay
+            showYamnetProgress();
 
             try {
                 const res = await fetch(`${API}/api/classify/${selectedFileId}`, { method: 'POST' });
                 const data = await res.json();
 
+                updateYamnetProgress(0.1, 'Model loaded, analyzing audio...');
+
                 await pollJob(data.job_id, (status) => {
-                    if (status.status === 'completed') {
-                        classificationData = status.result;
-                        renderClassification(status.result);
-                        // Auto-queue all classifications after YAMNet completes
-                        renderAudioSepClassifications(status.result.top_classes, true);
-                        // Load temporal (timeline) classifications
-                        const knob = document.getElementById('granularity-knob');
-                        const knobValue = knob ? Math.round(parseFloat(knob.value)) : 0;
-                        const granularity = (granularityMap[knobValue] || granularityMap[0]).value;
-                        loadTemporalClassifications(selectedFileId, granularity);
+                    if (status.status === 'processing') {
+                        // Update progress based on job progress if available
+                        const progress = status.progress || 0.3;
+                        updateYamnetProgress(progress, 'Processing audio frames...');
+                    } else if (status.status === 'completed') {
+                        updateYamnetProgress(1.0, 'Classification complete!');
+                        setTimeout(() => {
+                            hideYamnetProgress();
+                            classificationData = status.result;
+                            renderClassification(status.result);
+                            // Auto-queue all classifications after YAMNet completes
+                            renderAudioSepClassifications(status.result.top_classes, true);
+                            // Load temporal (timeline) classifications
+                            const knob = document.getElementById('granularity-knob');
+                            const knobValue = knob ? Math.round(parseFloat(knob.value)) : 0;
+                            const granularity = (granularityMap[knobValue] || granularityMap[0]).value;
+                            loadTemporalClassifications(selectedFileId, granularity);
+                        }, 500);
                     } else if (status.status === 'error') {
+                        hideYamnetProgress();
                         results.innerHTML = `<div style="color: var(--accent-red); padding: 1rem;">${status.message}</div>`;
                     }
                 });
             } catch (err) {
+                hideYamnetProgress();
                 results.innerHTML = `<div style="color: var(--accent-red); padding: 1rem;">Error: ${err.message}</div>`;
             }
 
-            btn.disabled = false;
-            btn.innerHTML = 'Classify';
+            if (btn) {
+                btn.disabled = false;
+                btn.innerHTML = 'Classify';
+            }
         }
 
         function renderClassification(result) {
