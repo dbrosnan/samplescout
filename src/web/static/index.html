@@ -18,6 +18,8 @@
         console.log('WaveSurfer loaded:', typeof WaveSurfer);
         console.log('Spectrogram plugin loaded:', typeof WaveSurfer.Spectrogram);
     </script>
+    <!-- Webaudio-controls for vintage analog UI components -->
+    <script src="https://cdn.jsdelivr.net/gh/g200kg/webaudio-controls@master/webaudio-controls.js"></script>
     <style>
         :root {
             /* Prince-inspired color palette: Purple Rain meets Purple & Gold */
@@ -739,51 +741,92 @@
         .temporal-controls {
             display: flex;
             align-items: center;
+            justify-content: space-between;
             gap: 1rem;
-            padding: 0.5rem 0.75rem;
-            background: rgba(0, 0, 0, 0.2);
-            border-radius: 6px;
+            padding: 0.75rem 1rem;
+            background: linear-gradient(180deg, rgba(30, 20, 35, 0.9) 0%, rgba(15, 10, 20, 0.95) 100%);
+            border: 1px solid rgba(212, 175, 55, 0.2);
+            border-radius: 12px;
             margin-bottom: 0.5rem;
-            font-size: 0.75rem;
+            box-shadow: inset 0 2px 4px rgba(0, 0, 0, 0.3), 0 2px 8px rgba(0, 0, 0, 0.2);
         }
 
-        .temporal-controls label {
-            color: var(--text-secondary);
+        .temporal-controls-title {
+            font-family: 'Cinzel', serif;
+            font-size: 0.7rem;
+            color: var(--prince-gold);
+            text-transform: uppercase;
+            letter-spacing: 0.1em;
+        }
+
+        .vintage-knob-container {
+            display: flex;
+            align-items: center;
+            gap: 0.5rem;
+            position: relative;
+        }
+
+        .vintage-knob-wrapper {
+            position: relative;
+            width: 70px;
+            height: 70px;
+            display: flex;
+            align-items: center;
+            justify-content: center;
+        }
+
+        .vintage-knob-labels {
+            position: absolute;
+            width: 100%;
+            height: 100%;
+            pointer-events: none;
+        }
+
+        .vintage-knob-label {
+            position: absolute;
+            font-size: 8px;
+            color: var(--prince-gold-light);
+            text-transform: uppercase;
+            letter-spacing: 0.05em;
             white-space: nowrap;
         }
 
-        .temporal-controls select {
-            background: rgba(106, 13, 173, 0.3);
-            border: 1px solid var(--prince-purple-light);
-            color: var(--text-primary);
-            padding: 0.35rem 0.5rem;
-            border-radius: 4px;
-            font-size: 0.75rem;
-            cursor: pointer;
-        }
+        .vintage-knob-label.pos-0 { top: -2px; left: 50%; transform: translateX(-50%); }
+        .vintage-knob-label.pos-1 { top: 50%; right: -8px; transform: translateY(-50%); }
+        .vintage-knob-label.pos-2 { bottom: -2px; left: 50%; transform: translateX(-50%); }
+        .vintage-knob-label.pos-3 { top: 50%; left: -8px; transform: translateY(-50%); }
 
-        .temporal-controls select:hover {
-            border-color: var(--prince-gold);
+        .vintage-knob-value {
+            font-family: 'Cinzel', serif;
+            font-size: 0.85rem;
+            color: var(--prince-gold);
+            text-align: center;
+            min-width: 60px;
+            padding: 0.25rem 0.5rem;
+            background: rgba(0, 0, 0, 0.4);
+            border: 1px solid rgba(212, 175, 55, 0.3);
+            border-radius: 4px;
         }
 
         #temporal-info {
+            font-size: 0.7rem;
             color: var(--text-muted);
-            margin-left: auto;
         }
 
         .temporal-legend {
             display: flex;
             align-items: center;
             gap: 0.5rem;
-            font-size: 0.7rem;
+            font-size: 0.65rem;
             color: var(--text-muted);
         }
 
         .temporal-legend-gradient {
-            width: 60px;
-            height: 12px;
+            width: 50px;
+            height: 10px;
             border-radius: 3px;
             background: linear-gradient(90deg, rgba(61, 0, 102, 0.3) 0%, var(--prince-purple) 50%, var(--prince-gold) 100%);
+            border: 1px solid rgba(255, 255, 255, 0.1);
         }
 
         .temporal-category-labels {
@@ -1498,20 +1541,31 @@
                         <!-- Temporal Heatmap - Classification Timeline -->
                         <div id="temporal-heatmap-section" style="display: none;">
                             <div class="temporal-controls">
-                                <label>Time Resolution:</label>
-                                <select id="granularity-select" onchange="changeGranularity(this.value)">
-                                    <option value="0.24">Extra Fine (~0.25s)</option>
-                                    <option value="0.48" selected>Fine (~0.5s)</option>
-                                    <option value="0.96">Standard (~1s)</option>
-                                    <option value="1.92">Coarse (~2s)</option>
-                                    <option value="3.84">Very Coarse (~4s)</option>
-                                </select>
+                                <div class="temporal-controls-title">Classification Timeline</div>
+                                <div class="vintage-knob-container">
+                                    <div class="vintage-knob-wrapper">
+                                        <webaudio-knob id="granularity-knob"
+                                            src="https://cdn.jsdelivr.net/gh/g200kg/webaudio-controls@master/knobs/LittlePhatty.png"
+                                            sprites="100"
+                                            min="0" max="3" step="1" value="0"
+                                            width="52" height="52"
+                                            tooltip="Time Resolution">
+                                        </webaudio-knob>
+                                        <div class="vintage-knob-labels">
+                                            <span class="vintage-knob-label pos-0">0.5s</span>
+                                            <span class="vintage-knob-label pos-1">1s</span>
+                                            <span class="vintage-knob-label pos-2">2s</span>
+                                            <span class="vintage-knob-label pos-3">4s</span>
+                                        </div>
+                                    </div>
+                                    <div class="vintage-knob-value" id="granularity-display">Fine</div>
+                                </div>
                                 <div class="temporal-legend">
                                     <span>Low</span>
                                     <div class="temporal-legend-gradient"></div>
                                     <span>High</span>
                                 </div>
-                                <span id="temporal-info">Each segment = 0.48 seconds</span>
+                                <span id="temporal-info">~0.5s segments</span>
                             </div>
                             <div class="temporal-heatmap-container" id="temporal-heatmap-container">
                                 <span class="waveform-label">Classification Timeline</span>
@@ -2509,7 +2563,9 @@
                         // Auto-queue all classifications after YAMNet completes
                         renderAudioSepClassifications(status.result.top_classes, true);
                         // Load temporal (timeline) classifications
-                        const granularity = parseFloat(document.getElementById('granularity-select')?.value || '0.48');
+                        const knob = document.getElementById('granularity-knob');
+                        const knobValue = knob ? Math.round(parseFloat(knob.value)) : 0;
+                        const granularity = (granularityMap[knobValue] || granularityMap[0]).value;
                         loadTemporalClassifications(selectedFileId, granularity);
                     } else if (status.status === 'error') {
                         results.innerHTML = `<div style="color: var(--accent-red); padding: 1rem;">${status.message}</div>`;
@@ -2549,6 +2605,14 @@
         // ═══════════════════════════════════════════════════════════════════
         // TEMPORAL HEATMAP - Classification Timeline Visualization
         // ═══════════════════════════════════════════════════════════════════
+
+        // Granularity mapping: knob position -> granularity value
+        const granularityMap = {
+            0: { value: 0.48, label: 'Fine', info: '~0.5s segments' },
+            1: { value: 0.96, label: 'Standard', info: '~1s segments' },
+            2: { value: 1.92, label: 'Coarse', info: '~2s segments' },
+            3: { value: 3.84, label: 'Wide', info: '~4s segments' }
+        };
 
         let temporalData = null;  // Stores current temporal classification data
         let temporalTooltip = null;  // Tooltip element
@@ -2789,14 +2853,44 @@
             playhead.style.left = xPos + 'px';
         }
 
-        function changeGranularity(value) {
+        function changeGranularity(knobValue) {
             if (!selectedFileId) return;
 
-            const granularity = parseFloat(value);
-            document.getElementById('temporal-info').textContent = 'Loading...';
+            const position = Math.round(parseFloat(knobValue));
+            const config = granularityMap[position] || granularityMap[0];
 
-            loadTemporalClassifications(selectedFileId, granularity);
+            // Update display
+            const display = document.getElementById('granularity-display');
+            const info = document.getElementById('temporal-info');
+            if (display) display.textContent = config.label;
+            if (info) info.textContent = 'Loading...';
+
+            loadTemporalClassifications(selectedFileId, config.value);
         }
+
+        function updateGranularityDisplay(knobValue) {
+            const position = Math.round(parseFloat(knobValue));
+            const config = granularityMap[position] || granularityMap[0];
+            const display = document.getElementById('granularity-display');
+            const info = document.getElementById('temporal-info');
+            if (display) display.textContent = config.label;
+            if (info) info.textContent = config.info;
+        }
+
+        // Initialize knob event listener when DOM is ready
+        document.addEventListener('DOMContentLoaded', () => {
+            const knob = document.getElementById('granularity-knob');
+            if (knob) {
+                // Update display on input (while dragging)
+                knob.addEventListener('input', (e) => {
+                    updateGranularityDisplay(e.target.value);
+                });
+                // Trigger classification on change (when released)
+                knob.addEventListener('change', (e) => {
+                    changeGranularity(e.target.value);
+                });
+            }
+        });
 
         // Handle window resize
         window.addEventListener('resize', () => {
