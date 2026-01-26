@@ -1158,6 +1158,16 @@
             overflow: hidden;
         }
 
+        /* Stem player wavesurfer container */
+        .stem-player .wavesurfer-container {
+            height: 32px;
+            position: relative;
+            overflow: visible;
+        }
+        .stem-player .wavesurfer-container .playhead-overlay {
+            height: 100%;
+        }
+
         .stem-download {
             width: 32px;
             height: 32px;
@@ -1334,6 +1344,27 @@
         .waveform-spectrogram-row .wavesurfer-container {
             height: 140px;
             flex: 1;
+        }
+
+        /* Custom playhead overlay for waveform + spectrogram */
+        .playhead-overlay {
+            position: absolute;
+            top: 0;
+            left: 0;
+            width: 2px;
+            height: 100%;
+            background: #ffffff;
+            pointer-events: none;
+            z-index: 100;
+            opacity: 0;
+            transition: opacity 0.15s ease;
+            box-shadow: 0 0 4px rgba(255, 255, 255, 0.5);
+        }
+        .playhead-overlay.active {
+            opacity: 1;
+        }
+        .wavesurfer-container.playing .playhead-overlay {
+            opacity: 1;
         }
 
         /* Full-width stems layout for MDX-Net */
@@ -2080,11 +2111,8 @@
                             <div class="audio-visualization">
                                 <div class="waveform-spectrogram-row">
                                     <button class="stem-play-btn" id="play-btn-${wavesurferId}">▶</button>
-                                    <div class="wavesurfer-container" id="${wavesurferId}"></div>
+                                    <div class="wavesurfer-container" id="${wavesurferId}" style="height: 64px;"></div>
                                     <a class="stem-download" href="${stemPath}" download title="Download">⬇</a>
-                                </div>
-                                <div class="spectrogram-container" id="${spectrogramId}">
-                                    <span class="spectrogram-label">Spectrogram</span>
                                 </div>
                             </div>
                         `);
@@ -2096,9 +2124,9 @@
                             btn.style.background = 'var(--accent-green)';
                         }
 
-                        // Initialize wavesurfer
+                        // Initialize wavesurfer - use simple stem player
                         requestAnimationFrame(() => {
-                            setTimeout(() => initWavesurferWithSpectrogram(wavesurferId, spectrogramId, stemPath), 100);
+                            setTimeout(() => initStemWavesurfer(wavesurferId, stemPath, '#f59e0b'), 100);
                         });
 
                         // Fetch and display insights
@@ -3290,23 +3318,19 @@
                                 item.classList.add('has-visualization');
 
                                 const wavesurferId = `wavesurfer-${index}-${Date.now()}`;
-                                const spectrogramId = `spectrogram-${index}-${Date.now()}`;
                                 item.insertAdjacentHTML('beforeend', `
                                     <div class="audio-visualization">
                                         <div class="waveform-spectrogram-row">
                                             <button class="stem-play-btn" id="play-btn-${wavesurferId}">▶</button>
-                                            <div class="wavesurfer-container" id="${wavesurferId}"></div>
+                                            <div class="wavesurfer-container" id="${wavesurferId}" style="height: 64px;"></div>
                                             <a class="stem-download" href="${stemPath}" download title="Download">⬇</a>
-                                        </div>
-                                        <div class="spectrogram-container" id="${spectrogramId}">
-                                            <span class="spectrogram-label">Spectrogram</span>
                                         </div>
                                     </div>
                                 `);
 
-                                // Initialize wavesurfer with spectrogram after DOM settles
+                                // Initialize wavesurfer - use simple stem player
                                 requestAnimationFrame(() => {
-                                    setTimeout(() => initWavesurferWithSpectrogram(wavesurferId, spectrogramId, stemPath), 100);
+                                    setTimeout(() => initStemWavesurfer(wavesurferId, stemPath, '#f59e0b'), 100);
                                 });
                             }
                             btn.innerHTML = '✓ ' + elapsed.toFixed(1) + 's';
@@ -3459,23 +3483,38 @@
             waveContainer.innerHTML = '<div style="color:#f59e0b;font-size:10px;padding:8px;">Loading...</div>';
 
             try {
+                // Create custom playhead overlay
+                const playhead = document.createElement('div');
+                playhead.className = 'playhead-overlay';
+                playhead.id = `playhead-${waveContainerId}`;
+
                 // Create wavesurfer - spectrogram renders inside shadow DOM
+                // Hide default cursor since we're using custom playhead
+                // Use same color for waveColor and progressColor to prevent visual change during playback
                 const wavesurfer = window.WaveSurfer.create({
                     container: waveContainer,
                     waveColor: '#f59e0b',
-                    progressColor: '#ef4444',
-                    cursorColor: '#ffffff',
-                    cursorWidth: 2,
+                    progressColor: '#f59e0b',  // Same as waveColor to prevent color shift
+                    cursorColor: 'transparent',
+                    cursorWidth: 0,
                     barWidth: 3,
                     barGap: 2,
                     barRadius: 3,
                     height: 40,
                     normalize: true,
                     url: audioPath,
+                    backend: 'WebAudio',  // Explicitly set backend
+                });
+
+                // Debug: Log all wavesurfer events
+                ['load', 'loading', 'decode', 'ready', 'redraw', 'redrawcomplete', 'play', 'pause', 'finish', 'destroy'].forEach(evt => {
+                    wavesurfer.on(evt, () => console.log(`[${waveContainerId}] WaveSurfer event: ${evt}`));
                 });
 
                 // Register spectrogram plugin (renders inside WaveSurfer's shadow DOM)
+                // DISABLED for debugging - spectrogram may be causing visual issues
                 let spectrogramPlugin = null;
+                /*
                 if (typeof window.SpectrogramPlugin !== 'undefined') {
                     spectrogramPlugin = wavesurfer.registerPlugin(window.SpectrogramPlugin.create({
                         labels: false,
@@ -3484,6 +3523,7 @@
                         fftSamples: 512,
                     }));
                 }
+                */
 
                 wavesurferInstances[waveContainerId] = wavesurfer;
 
@@ -3497,8 +3537,7 @@
                     });
                 }
 
-                // Storage for preserved canvas content
-                let spectrogramSnapshot = null;
+                // Storage for preserved canvas content (following main player pattern)
                 let waveformSnapshot = null;
                 let preservationActive = false;
 
@@ -3525,144 +3564,234 @@
                     img.src = dataUrl;
                 };
 
-                // Helper to force spectrogram visibility and restore if needed
-                const forceSpectrogramVisible = () => {
-                    if (spectrogramContainer) {
-                        spectrogramContainer.style.visibility = 'visible';
-                        spectrogramContainer.style.opacity = '1';
-                        spectrogramContainer.style.display = 'block';
-                        // Also force all child elements visible
-                        const children = spectrogramContainer.querySelectorAll('*');
-                        children.forEach(child => {
-                            child.style.visibility = 'visible';
-                            child.style.opacity = '1';
-                            child.style.display = child.tagName === 'CANVAS' ? 'block' : '';
-                        });
-
-                        // Restore spectrogram canvas if it was cleared
-                        if (preservationActive && spectrogramSnapshot) {
-                            const specCanvas = spectrogramContainer.querySelector('canvas');
-                            if (specCanvas) {
-                                const ctx = specCanvas.getContext('2d');
-                                const imageData = ctx.getImageData(0, 0, specCanvas.width, specCanvas.height);
-                                const isEmpty = !imageData.data.some(channel => channel !== 0);
-                                if (isEmpty) {
-                                    console.log('Restoring cleared spectrogram canvas');
-                                    restoreCanvas(specCanvas, spectrogramSnapshot);
-                                }
-                            }
-                        }
-                    }
+                // Minimal intervention - only ensure container is visible
+                const forceAllVisible = () => {
+                    waveContainer.style.visibility = 'visible';
+                    waveContainer.style.opacity = '1';
                 };
 
-                // Helper to preserve waveform appearance
-                const forceWaveformVisible = () => {
-                    if (waveContainer) {
-                        waveContainer.style.visibility = 'visible';
-                        waveContainer.style.opacity = '1';
-                        const waveCanvas = waveContainer.querySelector('canvas');
-                        if (waveCanvas) {
-                            waveCanvas.style.visibility = 'visible';
-                            waveCanvas.style.opacity = '1';
-                        }
-
-                        // Restore waveform canvas if it was cleared
-                        if (preservationActive && waveformSnapshot) {
-                            if (waveCanvas) {
-                                const ctx = waveCanvas.getContext('2d');
-                                const imageData = ctx.getImageData(0, 0, waveCanvas.width, waveCanvas.height);
-                                const isEmpty = !imageData.data.some(channel => channel !== 0);
-                                if (isEmpty) {
-                                    console.log('Restoring cleared waveform canvas');
-                                    restoreCanvas(waveCanvas, waveformSnapshot);
-                                }
-                            }
-                        }
-                    }
-                };
-
-                // Capture and preserve visuals
+                // Capture visuals (main player pattern)
                 const preserveVisuals = () => {
-                    if (spectrogramContainer) {
-                        const specCanvas = spectrogramContainer.querySelector('canvas');
-                        if (specCanvas) {
-                            spectrogramSnapshot = captureCanvas(specCanvas);
-                            console.log('Spectrogram snapshot captured');
-                        }
-                    }
-                    if (waveContainer) {
-                        const waveCanvas = waveContainer.querySelector('canvas');
-                        if (waveCanvas) {
-                            waveformSnapshot = captureCanvas(waveCanvas);
-                            console.log('Waveform snapshot captured');
-                        }
+                    const canvas = waveContainer.querySelector('canvas');
+                    if (canvas) {
+                        waveformSnapshot = captureCanvas(canvas);
+                        console.log(`[${waveContainerId}] Waveform snapshot captured`);
                     }
                     preservationActive = true;
                 };
 
+                // Visual integrity test - runs after playback to verify visuals are intact
+                const runVisualIntegrityTest = () => {
+                    const canvas = waveContainer.querySelector('canvas');
+                    const result = {
+                        containerId: waveContainerId,
+                        timestamp: new Date().toISOString(),
+                        hasCanvas: !!canvas,
+                        hasContent: false,
+                        pixelCount: 0,
+                        restored: false,
+                        passed: false
+                    };
+
+                    if (!canvas) {
+                        console.warn(`[${waveContainerId}] No canvas found`);
+                        return result;
+                    }
+
+                    try {
+                        const ctx = canvas.getContext('2d');
+                        const imageData = ctx.getImageData(0, 0, canvas.width, canvas.height);
+
+                        // Count non-transparent pixels
+                        let nonEmptyPixels = 0;
+                        for (let i = 3; i < imageData.data.length; i += 4) {
+                            if (imageData.data[i] > 0) nonEmptyPixels++;
+                        }
+                        result.pixelCount = nonEmptyPixels;
+                        result.hasContent = nonEmptyPixels > 100;
+
+                        // If empty but we have snapshot, restore
+                        if (!result.hasContent && waveformSnapshot) {
+                            console.warn(`[${waveContainerId}] Canvas EMPTY (${nonEmptyPixels}px) - restoring`);
+                            restoreCanvas(canvas, waveformSnapshot);
+                            result.restored = true;
+                        }
+
+                        result.passed = result.hasContent || result.restored;
+                    } catch (e) {
+                        result.error = e.message;
+                    }
+
+                    const status = result.passed ? '✓ PASS' : '✗ FAIL';
+                    console.log(`[Visual Test ${status}] ${waveContainerId}:`, result);
+
+                    // Show visual indicator if failed
+                    if (!result.passed) {
+                        const indicator = document.createElement('div');
+                        indicator.innerHTML = '⚠️ Visual issue';
+                        indicator.style.cssText = 'position:absolute;top:0;left:0;background:rgba(239,68,68,0.9);color:white;font-size:10px;padding:2px 6px;z-index:1000;border-radius:0 0 4px 0;';
+                        waveContainer.appendChild(indicator);
+                        setTimeout(() => indicator.remove(), 3000);
+                    }
+
+                    return result;
+                };
+
+                // Helper to update playhead position
+                const updatePlayhead = (progress) => {
+                    const containerWidth = waveContainer.offsetWidth;
+                    const position = progress * containerWidth;
+                    playhead.style.left = `${position}px`;
+                };
+
                 wavesurfer.on('play', () => {
                     if(playBtn) playBtn.innerHTML = '⏸';
+                    waveContainer.classList.add('playing');
+                    playhead.classList.add('active');
+
+                    // Debug: Check canvas state on play
+                    const canvas = waveContainer.querySelector('canvas');
+                    if (canvas) {
+                        console.log(`[${waveContainerId}] Play - Canvas size: ${canvas.width}x${canvas.height}, visible: ${canvas.style.visibility}, display: ${canvas.style.display}`);
+                    } else {
+                        console.warn(`[${waveContainerId}] Play - NO CANVAS FOUND!`);
+                    }
+
                     // Capture visuals at start of play if not already captured
                     if (!preservationActive) {
                         setTimeout(preserveVisuals, 100);
                     }
-                    forceSpectrogramVisible();
-                    forceWaveformVisible();
+                    forceAllVisible();
+
+                    // Check again after short delays to catch any clearing
+                    setTimeout(() => {
+                        const c = waveContainer.querySelector('canvas');
+                        if (c) {
+                            try {
+                                const ctx = c.getContext('2d');
+                                const data = ctx.getImageData(0, 0, c.width, c.height);
+                                let pixels = 0;
+                                for (let i = 3; i < data.data.length; i += 4) if (data.data[i] > 0) pixels++;
+                                console.log(`[${waveContainerId}] Play+50ms - Pixels: ${pixels}`);
+                                if (pixels < 100) {
+                                    console.error(`[${waveContainerId}] CANVAS CLEARED DURING PLAY!`);
+                                    forceAllVisible();
+                                }
+                            } catch(e) {}
+                        }
+                    }, 50);
+
+                    setTimeout(() => {
+                        const c = waveContainer.querySelector('canvas');
+                        if (c) {
+                            try {
+                                const ctx = c.getContext('2d');
+                                const data = ctx.getImageData(0, 0, c.width, c.height);
+                                let pixels = 0;
+                                for (let i = 3; i < data.data.length; i += 4) if (data.data[i] > 0) pixels++;
+                                console.log(`[${waveContainerId}] Play+200ms - Pixels: ${pixels}`);
+                                if (pixels < 100) {
+                                    console.error(`[${waveContainerId}] CANVAS CLEARED 200ms AFTER PLAY!`);
+                                    forceAllVisible();
+                                }
+                            } catch(e) {}
+                        }
+                    }, 200);
                 });
                 wavesurfer.on('pause', () => {
                     if(playBtn) playBtn.innerHTML = '▶';
-                    forceSpectrogramVisible();
-                    forceWaveformVisible();
+                    waveContainer.classList.remove('playing');
+                    // Keep playhead visible but static when paused
+                    forceAllVisible();
                 });
                 wavesurfer.on('finish', () => {
                     if(playBtn) playBtn.innerHTML = '▶';
                     currentWavesurfer = null;
-                    console.log('Audio finished, preserving visuals');
+                    waveContainer.classList.remove('playing');
+                    playhead.classList.remove('active');
+                    playhead.style.left = '0px';
+                    console.log(`[${waveContainerId}] Audio finished`);
                     // Force restore visuals after finish with multiple delays
-                    forceSpectrogramVisible();
-                    forceWaveformVisible();
-                    setTimeout(() => { forceSpectrogramVisible(); forceWaveformVisible(); }, 50);
-                    setTimeout(() => { forceSpectrogramVisible(); forceWaveformVisible(); }, 200);
-                    setTimeout(() => { forceSpectrogramVisible(); forceWaveformVisible(); }, 500);
+                    forceAllVisible();
+                    setTimeout(forceAllVisible, 50);
+                    setTimeout(forceAllVisible, 200);
+                    setTimeout(forceAllVisible, 500);
+                    // Run visual integrity test after restore attempts
+                    setTimeout(() => {
+                        const testResult = runVisualIntegrityTest();
+                        if (!testResult.passed) {
+                            console.warn(`[${waveContainerId}] Visual test failed, retrying restore...`);
+                            forceAllVisible();
+                            setTimeout(runVisualIntegrityTest, 300);
+                        }
+                    }, 800);
                 });
                 wavesurfer.on('ready', () => {
-                    console.log('Wavesurfer with spectrogram ready:', waveContainerId);
-                    forceSpectrogramVisible();
-                    forceWaveformVisible();
-                    // Capture visuals after ready with delays for rendering
-                    setTimeout(() => {
-                        preserveVisuals();
-                        forceSpectrogramVisible();
-                        forceWaveformVisible();
-                    }, 500);
-                    setTimeout(() => {
-                        preserveVisuals();
-                        forceSpectrogramVisible();
-                        forceWaveformVisible();
-                    }, 1000);
-                });
-                wavesurfer.on('redraw', () => {
-                    forceSpectrogramVisible();
-                    forceWaveformVisible();
-                });
-                wavesurfer.on('redrawcomplete', () => {
-                    forceSpectrogramVisible();
-                    forceWaveformVisible();
-                });
-                wavesurfer.on('interaction', () => {
-                    forceSpectrogramVisible();
-                    forceWaveformVisible();
-                });
-                wavesurfer.on('seeking', () => {
-                    forceSpectrogramVisible();
-                    forceWaveformVisible();
-                });
-                wavesurfer.on('timeupdate', () => {
-                    // Keep spectrogram visible during playback
-                    if (spectrogramContainer) {
-                        spectrogramContainer.style.visibility = 'visible';
-                        spectrogramContainer.style.opacity = '1';
+                    console.log(`[${waveContainerId}] WaveSurfer READY`);
+
+                    // Debug: Check what's in the container
+                    console.log(`[${waveContainerId}] Container children:`, waveContainer.children.length);
+                    console.log(`[${waveContainerId}] Container innerHTML preview:`, waveContainer.innerHTML.substring(0, 200));
+
+                    const canvas = waveContainer.querySelector('canvas');
+                    if (canvas) {
+                        console.log(`[${waveContainerId}] Canvas found: ${canvas.width}x${canvas.height}`);
+                        try {
+                            const ctx = canvas.getContext('2d');
+                            const data = ctx.getImageData(0, 0, canvas.width, canvas.height);
+                            let pixels = 0;
+                            for (let i = 3; i < data.data.length; i += 4) if (data.data[i] > 0) pixels++;
+                            console.log(`[${waveContainerId}] Ready - Pixels: ${pixels}`);
+                        } catch(e) { console.error('Canvas read error:', e); }
+                    } else {
+                        console.warn(`[${waveContainerId}] NO CANVAS on ready!`);
                     }
+
+                    // Add the custom playhead to the container
+                    waveContainer.appendChild(playhead);
+                    forceAllVisible();
+
+                    // Check at intervals to see when it breaks
+                    [100, 300, 500, 1000, 2000].forEach(delay => {
+                        setTimeout(() => {
+                            const c = waveContainer.querySelector('canvas');
+                            if (c) {
+                                try {
+                                    const ctx = c.getContext('2d');
+                                    const data = ctx.getImageData(0, 0, c.width, c.height);
+                                    let pixels = 0;
+                                    for (let i = 3; i < data.data.length; i += 4) if (data.data[i] > 0) pixels++;
+                                    console.log(`[${waveContainerId}] Ready+${delay}ms - Pixels: ${pixels}${pixels < 100 ? ' ⚠️ EMPTY!' : ''}`);
+                                    if (pixels < 100 && waveformSnapshot) {
+                                        console.log(`[${waveContainerId}] Attempting restore at +${delay}ms`);
+                                        forceAllVisible();
+                                    }
+                                } catch(e) {}
+                            }
+                            if (delay === 500 || delay === 1000) {
+                                preserveVisuals();
+                            }
+                        }, delay);
+                    });
+                });
+                wavesurfer.on('redraw', forceAllVisible);
+                wavesurfer.on('redrawcomplete', forceAllVisible);
+                wavesurfer.on('interaction', forceAllVisible);
+                wavesurfer.on('seeking', (time) => {
+                    const duration = wavesurfer.getDuration();
+                    if (duration > 0) {
+                        updatePlayhead(time / duration);
+                        playhead.classList.add('active');
+                    }
+                    forceAllVisible();
+                });
+                wavesurfer.on('timeupdate', (time) => {
+                    // Update custom playhead position only
+                    const duration = wavesurfer.getDuration();
+                    if (duration > 0) {
+                        updatePlayhead(time / duration);
+                    }
+                    // Don't call forceAllVisible here - it runs too frequently and may interfere
                 });
                 wavesurfer.on('error', (e) => {
                     console.error('Wavesurfer error:', e);
@@ -3854,12 +3983,17 @@
             container.innerHTML = '<div style="color:' + color + ';font-size:9px;padding:4px;">Loading...</div>';
 
             try {
+                // Create custom playhead overlay
+                const playhead = document.createElement('div');
+                playhead.className = 'playhead-overlay';
+                playhead.id = `playhead-${containerId}`;
+
                 const wavesurfer = window.WaveSurfer.create({
                     container: container,
                     waveColor: color,
                     progressColor: '#ffffff',
-                    cursorColor: '#ffffff',
-                    cursorWidth: 1,
+                    cursorColor: 'transparent',
+                    cursorWidth: 0,
                     barWidth: 2,
                     barGap: 1,
                     barRadius: 2,
@@ -3868,6 +4002,106 @@
                     url: audioPath,
                 });
                 wavesurferInstances[containerId] = wavesurfer;
+
+                // Visual preservation
+                let waveformSnapshot = null;
+
+                const captureWaveform = () => {
+                    const canvas = container.querySelector('canvas');
+                    if (canvas) {
+                        try {
+                            waveformSnapshot = canvas.toDataURL('image/png');
+                        } catch(e) { console.warn('Canvas capture failed:', e); }
+                    }
+                };
+
+                const restoreWaveform = () => {
+                    if (!waveformSnapshot) return;
+                    const canvas = container.querySelector('canvas');
+                    if (canvas) {
+                        const ctx = canvas.getContext('2d');
+                        const img = new Image();
+                        img.onload = () => {
+                            ctx.clearRect(0, 0, canvas.width, canvas.height);
+                            ctx.drawImage(img, 0, 0);
+                        };
+                        img.src = waveformSnapshot;
+                    }
+                };
+
+                const forceVisible = () => {
+                    container.style.visibility = 'visible';
+                    container.style.opacity = '1';
+                    const canvas = container.querySelector('canvas');
+                    if (canvas) {
+                        canvas.style.visibility = 'visible';
+                        canvas.style.opacity = '1';
+                    }
+                };
+
+                // Visual integrity test for stem waveform
+                const runStemVisualTest = () => {
+                    const canvas = container.querySelector('canvas');
+                    if (!canvas) {
+                        console.warn(`[${containerId}] No canvas found for visual test`);
+                        return { passed: false, reason: 'no_canvas' };
+                    }
+
+                    const result = {
+                        containerId,
+                        timestamp: new Date().toISOString(),
+                        width: canvas.width,
+                        height: canvas.height,
+                        hasContent: false,
+                        restored: false
+                    };
+
+                    try {
+                        const ctx = canvas.getContext('2d');
+                        const imageData = ctx.getImageData(0, 0, canvas.width, canvas.height);
+
+                        // Count non-transparent pixels
+                        let nonEmptyPixels = 0;
+                        for (let i = 3; i < imageData.data.length; i += 4) {
+                            if (imageData.data[i] > 0) nonEmptyPixels++;
+                        }
+                        result.pixelCount = nonEmptyPixels;
+                        result.hasContent = nonEmptyPixels > 50;
+
+                        // If empty but we have snapshot, restore
+                        if (!result.hasContent && waveformSnapshot) {
+                            console.warn(`[${containerId}] Waveform EMPTY (${nonEmptyPixels} pixels) - restoring`);
+                            restoreWaveform();
+                            result.restored = true;
+                        }
+
+                        result.passed = result.hasContent || result.restored;
+                    } catch (e) {
+                        result.error = e.message;
+                        result.passed = false;
+                    }
+
+                    const status = result.passed ? '✓ PASS' : '✗ FAIL';
+                    console.log(`[Stem Visual Test ${status}] ${containerId}:`, result);
+
+                    // Show warning if failed
+                    if (!result.passed) {
+                        const warning = document.createElement('div');
+                        warning.innerHTML = '⚠️';
+                        warning.style.cssText = 'position:absolute;top:2px;right:2px;font-size:12px;z-index:100;';
+                        warning.title = 'Visual integrity issue - waveform may have disappeared';
+                        container.appendChild(warning);
+                        setTimeout(() => warning.remove(), 5000);
+                    }
+
+                    return result;
+                };
+
+                // Playhead position update
+                const updatePlayhead = (progress) => {
+                    const containerWidth = container.offsetWidth;
+                    playhead.style.left = `${progress * containerWidth}px`;
+                };
 
                 if (playBtn) {
                     playBtn.addEventListener('click', () => {
@@ -3879,10 +4113,67 @@
                     });
                 }
 
-                wavesurfer.on('play', () => { if(playBtn) playBtn.innerHTML = '⏸'; });
-                wavesurfer.on('pause', () => { if(playBtn) playBtn.innerHTML = '▶'; });
-                wavesurfer.on('finish', () => { if(playBtn) playBtn.innerHTML = '▶'; currentWavesurfer = null; });
-                wavesurfer.on('ready', () => { console.log('Stem ready:', containerId); });
+                wavesurfer.on('play', () => {
+                    if(playBtn) playBtn.innerHTML = '⏸';
+                    playhead.classList.add('active');
+                    forceVisible();
+                });
+                wavesurfer.on('pause', () => {
+                    if(playBtn) playBtn.innerHTML = '▶';
+                    forceVisible();
+                });
+                wavesurfer.on('finish', () => {
+                    if(playBtn) playBtn.innerHTML = '▶';
+                    currentWavesurfer = null;
+                    playhead.classList.remove('active');
+                    playhead.style.left = '0px';
+                    // Restore waveform visuals
+                    forceVisible();
+                    setTimeout(restoreWaveform, 50);
+                    setTimeout(restoreWaveform, 200);
+                    // Run visual integrity test after restore
+                    setTimeout(() => {
+                        const testResult = runStemVisualTest();
+                        if (!testResult.passed) {
+                            // Try one more restore and test
+                            restoreWaveform();
+                            setTimeout(runStemVisualTest, 300);
+                        }
+                    }, 500);
+                });
+                wavesurfer.on('ready', () => {
+                    console.log('Stem ready:', containerId);
+
+                    // Remove the Loading... div that was added initially
+                    const loadingDiv = container.querySelector('div[style*="Loading"]');
+                    if (loadingDiv && loadingDiv.textContent.includes('Loading')) {
+                        loadingDiv.remove();
+                    }
+                    // Also remove any div that has "Loading..." text
+                    Array.from(container.children).forEach(child => {
+                        if (child.textContent === 'Loading...' || child.textContent.includes('Loading')) {
+                            child.remove();
+                        }
+                    });
+
+                    container.appendChild(playhead);
+                    // Capture waveform after render
+                    setTimeout(captureWaveform, 300);
+                    setTimeout(captureWaveform, 800);
+                });
+                wavesurfer.on('timeupdate', (time) => {
+                    const duration = wavesurfer.getDuration();
+                    if (duration > 0) {
+                        updatePlayhead(time / duration);
+                    }
+                });
+                wavesurfer.on('seeking', (time) => {
+                    const duration = wavesurfer.getDuration();
+                    if (duration > 0) {
+                        updatePlayhead(time / duration);
+                        playhead.classList.add('active');
+                    }
+                });
                 wavesurfer.on('error', (e) => {
                     console.error('Stem error:', e);
                     showFallbackPlayer(container, audioPath, playBtn, color);

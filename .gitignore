@@ -130,3 +130,6 @@ credentials.json
 # Test files
 test_screenshots/
 test_visuals.py
+node_modules/
+test-results/
+tests/screenshots/
