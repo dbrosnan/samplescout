@@ -183,6 +183,108 @@ class YAMNetClassifier:
 
         return frame_results
 
+    def classify_temporal(
+        self,
+        audio_path: str,
+        top_k: int = 10,
+        granularity: float = 0.96,
+    ) -> dict:
+        """
+        Classify audio and return temporal (per-frame) results with timing metadata.
+
+        Args:
+            audio_path: Path to audio file
+            top_k: Number of top categories to return per frame
+            granularity: Time resolution in seconds (0.48, 0.96, 1.92, 3.84)
+                         Native frame rate is ~0.48s (patch_hop_seconds)
+
+        Returns:
+            Dictionary with temporal classification data:
+            {
+                "frame_duration": float,  # seconds per frame
+                "total_frames": int,
+                "categories": [str, ...],  # unique category names across all frames
+                "frames": [
+                    {
+                        "time_start": float,
+                        "time_end": float,
+                        "classifications": [{"idx": int, "name": str, "score": float}, ...]
+                    },
+                    ...
+                ]
+            }
+        """
+        start_time = time.time()
+
+        # Load and run inference
+        waveform = self._load_audio(audio_path)
+        scores, _, _ = self.model(waveform)
+        scores_np = scores.numpy()
+
+        # Native frame duration is ~0.48 seconds (patch_hop_seconds)
+        native_frame_duration = 0.48
+        num_native_frames = scores_np.shape[0]
+
+        # Calculate frames to average based on granularity
+        frames_to_average = max(1, int(round(granularity / native_frame_duration)))
+        actual_frame_duration = frames_to_average * native_frame_duration
+
+        # Average adjacent frames for coarser granularity
+        if frames_to_average > 1:
+            num_output_frames = num_native_frames // frames_to_average
+            averaged_scores = []
+            for i in range(num_output_frames):
+                start_idx = i * frames_to_average
+                end_idx = start_idx + frames_to_average
+                avg_scores = np.mean(scores_np[start_idx:end_idx], axis=0)
+                averaged_scores.append(avg_scores)
+            scores_np = np.array(averaged_scores)
+
+        # Track unique categories across all frames
+        all_category_indices = set()
+
+        # Build frame results with timing
+        frames = []
+        for i, frame_scores in enumerate(scores_np):
+            time_start = i * actual_frame_duration
+            time_end = time_start + actual_frame_duration
+
+            # Get top-k classifications for this frame
+            top_indices = np.argsort(frame_scores)[::-1][:top_k]
+            classifications = []
+            for idx in top_indices:
+                idx = int(idx)
+                all_category_indices.add(idx)
+                classifications.append({
+                    "idx": idx,
+                    "name": self.class_names[idx],
+                    "score": float(frame_scores[idx]),
+                })
+
+            frames.append({
+                "time_start": round(time_start, 3),
+                "time_end": round(time_end, 3),
+                "classifications": classifications,
+            })
+
+        # Build unique categories list (sorted by most frequent appearance)
+        category_counts = {}
+        for frame in frames:
+            for c in frame["classifications"]:
+                category_counts[c["name"]] = category_counts.get(c["name"], 0) + 1
+
+        categories = sorted(category_counts.keys(), key=lambda x: -category_counts[x])
+
+        processing_time = time.time() - start_time
+
+        return {
+            "frame_duration": round(actual_frame_duration, 3),
+            "total_frames": len(frames),
+            "categories": categories,
+            "frames": frames,
+            "processing_time": round(processing_time, 3),
+        }
+
     def _load_audio(self, audio_path: str) -> tf.Tensor:
         """Load and preprocess audio for YAMNet."""
         # Load audio at YAMNet's expected sample rate

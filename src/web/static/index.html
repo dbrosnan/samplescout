@@ -652,6 +652,163 @@
         .main-spectrogram-container {
             display: none;
         }
+
+        /* ═══════════════════════════════════════════════════════════════════
+           TEMPORAL HEATMAP - Classification Timeline Visualization
+           ═══════════════════════════════════════════════════════════════════ */
+        .temporal-heatmap-container {
+            position: relative;
+            height: 180px;
+            background: rgba(0, 0, 0, 0.3);
+            border-radius: 8px;
+            margin-bottom: 0.75rem;
+            overflow: hidden;
+        }
+
+        .temporal-heatmap-container .waveform-label {
+            position: absolute;
+            top: 4px;
+            left: 8px;
+            font-size: 10px;
+            color: rgba(255, 255, 255, 0.5);
+            text-transform: uppercase;
+            letter-spacing: 0.5px;
+            z-index: 10;
+        }
+
+        #temporal-heatmap-canvas {
+            width: 100%;
+            height: 100%;
+            display: block;
+            cursor: pointer;
+        }
+
+        .temporal-heatmap-playhead {
+            position: absolute;
+            top: 0;
+            bottom: 0;
+            width: 2px;
+            background: #ffffff;
+            box-shadow: 0 0 6px rgba(255, 255, 255, 0.8);
+            pointer-events: none;
+            z-index: 20;
+            left: 0;
+            transition: left 0.05s linear;
+        }
+
+        .temporal-heatmap-tooltip {
+            position: absolute;
+            background: rgba(10, 0, 8, 0.95);
+            border: 1px solid var(--prince-gold);
+            border-radius: 8px;
+            padding: 0.75rem;
+            font-size: 0.75rem;
+            z-index: 100;
+            pointer-events: none;
+            max-width: 250px;
+            box-shadow: 0 4px 20px rgba(0, 0, 0, 0.5);
+        }
+
+        .temporal-heatmap-tooltip-header {
+            color: var(--prince-gold);
+            font-weight: 600;
+            margin-bottom: 0.5rem;
+            border-bottom: 1px solid rgba(212, 175, 55, 0.3);
+            padding-bottom: 0.25rem;
+        }
+
+        .temporal-heatmap-tooltip-item {
+            display: flex;
+            justify-content: space-between;
+            gap: 1rem;
+            padding: 0.15rem 0;
+        }
+
+        .temporal-heatmap-tooltip-name {
+            color: var(--text-primary);
+            white-space: nowrap;
+            overflow: hidden;
+            text-overflow: ellipsis;
+        }
+
+        .temporal-heatmap-tooltip-score {
+            color: var(--prince-purple-light);
+            font-weight: 500;
+        }
+
+        .temporal-controls {
+            display: flex;
+            align-items: center;
+            gap: 1rem;
+            padding: 0.5rem 0.75rem;
+            background: rgba(0, 0, 0, 0.2);
+            border-radius: 6px;
+            margin-bottom: 0.5rem;
+            font-size: 0.75rem;
+        }
+
+        .temporal-controls label {
+            color: var(--text-secondary);
+            white-space: nowrap;
+        }
+
+        .temporal-controls select {
+            background: rgba(106, 13, 173, 0.3);
+            border: 1px solid var(--prince-purple-light);
+            color: var(--text-primary);
+            padding: 0.35rem 0.5rem;
+            border-radius: 4px;
+            font-size: 0.75rem;
+            cursor: pointer;
+        }
+
+        .temporal-controls select:hover {
+            border-color: var(--prince-gold);
+        }
+
+        #temporal-info {
+            color: var(--text-muted);
+            margin-left: auto;
+        }
+
+        .temporal-legend {
+            display: flex;
+            align-items: center;
+            gap: 0.5rem;
+            font-size: 0.7rem;
+            color: var(--text-muted);
+        }
+
+        .temporal-legend-gradient {
+            width: 60px;
+            height: 12px;
+            border-radius: 3px;
+            background: linear-gradient(90deg, rgba(61, 0, 102, 0.3) 0%, var(--prince-purple) 50%, var(--prince-gold) 100%);
+        }
+
+        .temporal-category-labels {
+            position: absolute;
+            left: 0;
+            top: 20px;
+            bottom: 0;
+            width: 80px;
+            display: flex;
+            flex-direction: column;
+            justify-content: space-around;
+            padding: 4px 0;
+            font-size: 9px;
+            color: rgba(255, 255, 255, 0.7);
+            pointer-events: none;
+            z-index: 15;
+            background: linear-gradient(90deg, rgba(10, 0, 8, 0.8) 0%, transparent 100%);
+        }
+
+        .temporal-category-label {
+            padding-left: 4px;
+            white-space: nowrap;
+            overflow: hidden;
+            text-overflow: ellipsis;
+        }
         .main-spectrogram-container canvas {
             width: 100% !important;
             height: 100% !important;
@@ -1337,6 +1494,30 @@
                         <!-- Waveform visualization -->
                         <div class="main-waveform-container" id="main-waveform-container">
                             <span class="waveform-label">Waveform</span>
+                        </div>
+                        <!-- Temporal Heatmap - Classification Timeline -->
+                        <div id="temporal-heatmap-section" style="display: none;">
+                            <div class="temporal-controls">
+                                <label>Time Resolution:</label>
+                                <select id="granularity-select" onchange="changeGranularity(this.value)">
+                                    <option value="0.48">Fine (~0.5s)</option>
+                                    <option value="0.96" selected>Standard (~1s)</option>
+                                    <option value="1.92">Coarse (~2s)</option>
+                                    <option value="3.84">Very Coarse (~4s)</option>
+                                </select>
+                                <div class="temporal-legend">
+                                    <span>Low</span>
+                                    <div class="temporal-legend-gradient"></div>
+                                    <span>High</span>
+                                </div>
+                                <span id="temporal-info">Each segment = 0.96 seconds</span>
+                            </div>
+                            <div class="temporal-heatmap-container" id="temporal-heatmap-container">
+                                <span class="waveform-label">Classification Timeline</span>
+                                <canvas id="temporal-heatmap-canvas"></canvas>
+                                <div class="temporal-heatmap-playhead" id="temporal-playhead"></div>
+                                <div class="temporal-category-labels" id="temporal-category-labels"></div>
+                            </div>
                         </div>
                         <!-- Spectrogram visualization (3x taller for source file) -->
                         <div class="main-spectrogram-container" id="main-spectrogram-container">
@@ -2060,6 +2241,10 @@
             document.getElementById('mdxnet-results').innerHTML = '';
             document.getElementById('audiosep-classifications').innerHTML = `<div style="color: var(--text-muted); text-align: center; padding: 2rem;">Classify the audio first to see detected sounds</div>`;
 
+            // Reset temporal heatmap
+            temporalData = null;
+            document.getElementById('temporal-heatmap-section').style.display = 'none';
+
             // Fetch and display source audio stats
             fetchSourceStats(selectedFileId);
         }
@@ -2248,6 +2433,8 @@
                         specContainer.style.visibility = 'visible';
                         specContainer.style.opacity = '1';
                     }
+                    // Update temporal heatmap playhead
+                    updateTemporalPlayhead(time, duration);
                 });
 
                 mainWavesurfer.on('seeking', forceMainVisualsVisible);
@@ -2320,6 +2507,9 @@
                         renderClassification(status.result);
                         // Auto-queue all classifications after YAMNet completes
                         renderAudioSepClassifications(status.result.top_classes, true);
+                        // Load temporal (timeline) classifications
+                        const granularity = parseFloat(document.getElementById('granularity-select')?.value || '0.96');
+                        loadTemporalClassifications(selectedFileId, granularity);
                     } else if (status.status === 'error') {
                         results.innerHTML = `<div style="color: var(--accent-red); padding: 1rem;">${status.message}</div>`;
                     }
@@ -2354,6 +2544,265 @@
                 </div>
             `;
         }
+
+        // ═══════════════════════════════════════════════════════════════════
+        // TEMPORAL HEATMAP - Classification Timeline Visualization
+        // ═══════════════════════════════════════════════════════════════════
+
+        let temporalData = null;  // Stores current temporal classification data
+        let temporalTooltip = null;  // Tooltip element
+
+        async function loadTemporalClassifications(fileId, granularity = 0.96) {
+            const section = document.getElementById('temporal-heatmap-section');
+            const infoEl = document.getElementById('temporal-info');
+
+            try {
+                const res = await fetch(`${API}/api/classify-temporal/${fileId}?granularity=${granularity}&top_k=10`, {
+                    method: 'POST'
+                });
+
+                if (!res.ok) {
+                    throw new Error(`HTTP ${res.status}`);
+                }
+
+                temporalData = await res.json();
+                console.log('Temporal classification data:', temporalData);
+
+                // Show the section and update info
+                section.style.display = 'block';
+                infoEl.textContent = `Each segment = ${temporalData.frame_duration.toFixed(2)} seconds`;
+
+                // Render the heatmap
+                renderTemporalHeatmap();
+
+            } catch (err) {
+                console.error('Failed to load temporal classifications:', err);
+                section.style.display = 'none';
+            }
+        }
+
+        function renderTemporalHeatmap() {
+            if (!temporalData || !temporalData.frames.length) return;
+
+            const canvas = document.getElementById('temporal-heatmap-canvas');
+            const container = document.getElementById('temporal-heatmap-container');
+            const labelsContainer = document.getElementById('temporal-category-labels');
+
+            if (!canvas || !container) return;
+
+            // Set canvas size
+            const rect = container.getBoundingClientRect();
+            const dpr = window.devicePixelRatio || 1;
+            canvas.width = rect.width * dpr;
+            canvas.height = rect.height * dpr;
+            canvas.style.width = rect.width + 'px';
+            canvas.style.height = rect.height + 'px';
+
+            const ctx = canvas.getContext('2d');
+            ctx.scale(dpr, dpr);
+
+            // Get top categories to display (limit to 8-10 rows)
+            const displayCategories = temporalData.categories.slice(0, 8);
+            const numRows = displayCategories.length;
+            const numCols = temporalData.frames.length;
+
+            // Calculate cell dimensions
+            const labelWidth = 85;  // Space for category labels
+            const topPadding = 20;  // Space for "Classification Timeline" label
+            const cellWidth = (rect.width - labelWidth) / numCols;
+            const cellHeight = (rect.height - topPadding) / numRows;
+
+            // Clear canvas
+            ctx.clearRect(0, 0, rect.width, rect.height);
+
+            // Build a map of category -> row index
+            const categoryRowMap = {};
+            displayCategories.forEach((cat, idx) => {
+                categoryRowMap[cat] = idx;
+            });
+
+            // Draw heatmap cells
+            temporalData.frames.forEach((frame, colIdx) => {
+                // Create a score map for this frame
+                const scoreMap = {};
+                frame.classifications.forEach(c => {
+                    scoreMap[c.name] = c.score;
+                });
+
+                // Draw each category row
+                displayCategories.forEach((category, rowIdx) => {
+                    const score = scoreMap[category] || 0;
+                    const x = labelWidth + colIdx * cellWidth;
+                    const y = topPadding + rowIdx * cellHeight;
+
+                    // Get color based on score
+                    const color = interpolateHeatmapColor(score);
+                    ctx.fillStyle = color;
+                    ctx.fillRect(x, y, cellWidth + 0.5, cellHeight + 0.5);  // +0.5 to avoid gaps
+                });
+            });
+
+            // Draw grid lines (subtle)
+            ctx.strokeStyle = 'rgba(255, 255, 255, 0.1)';
+            ctx.lineWidth = 0.5;
+
+            // Horizontal lines between rows
+            for (let i = 0; i <= numRows; i++) {
+                const y = topPadding + i * cellHeight;
+                ctx.beginPath();
+                ctx.moveTo(labelWidth, y);
+                ctx.lineTo(rect.width, y);
+                ctx.stroke();
+            }
+
+            // Update category labels
+            labelsContainer.innerHTML = displayCategories.map(cat =>
+                `<div class="temporal-category-label" title="${cat}">${cat}</div>`
+            ).join('');
+            labelsContainer.style.top = topPadding + 'px';
+
+            // Setup hover tooltip
+            setupTemporalTooltip(canvas, rect, labelWidth, topPadding, cellWidth, cellHeight, displayCategories);
+        }
+
+        function interpolateHeatmapColor(intensity) {
+            // Map 0-1 intensity to purple-gold gradient
+            // Low: transparent dark purple, High: bright gold
+            intensity = Math.max(0, Math.min(1, intensity));
+
+            if (intensity < 0.1) {
+                // Very low - almost transparent
+                return `rgba(61, 0, 102, ${0.1 + intensity * 2})`;
+            } else if (intensity < 0.4) {
+                // Low to medium - purple shades
+                const t = (intensity - 0.1) / 0.3;
+                const r = Math.round(61 + t * (106 - 61));
+                const g = Math.round(0 + t * 13);
+                const b = Math.round(102 + t * (173 - 102));
+                return `rgba(${r}, ${g}, ${b}, ${0.5 + t * 0.3})`;
+            } else if (intensity < 0.7) {
+                // Medium - purple to light purple
+                const t = (intensity - 0.4) / 0.3;
+                const r = Math.round(106 + t * (155 - 106));
+                const g = Math.round(13 + t * (77 - 13));
+                const b = Math.round(173 + t * (202 - 173));
+                return `rgba(${r}, ${g}, ${b}, ${0.8 + t * 0.1})`;
+            } else {
+                // High - purple to gold
+                const t = (intensity - 0.7) / 0.3;
+                const r = Math.round(155 + t * (212 - 155));
+                const g = Math.round(77 + t * (175 - 77));
+                const b = Math.round(202 + t * (55 - 202));
+                return `rgba(${r}, ${g}, ${b}, ${0.9 + t * 0.1})`;
+            }
+        }
+
+        function setupTemporalTooltip(canvas, rect, labelWidth, topPadding, cellWidth, cellHeight, categories) {
+            // Remove existing tooltip
+            if (temporalTooltip) {
+                temporalTooltip.remove();
+            }
+
+            // Create tooltip element
+            temporalTooltip = document.createElement('div');
+            temporalTooltip.className = 'temporal-heatmap-tooltip';
+            temporalTooltip.style.display = 'none';
+            document.body.appendChild(temporalTooltip);
+
+            const container = document.getElementById('temporal-heatmap-container');
+
+            canvas.onmousemove = (e) => {
+                const canvasRect = canvas.getBoundingClientRect();
+                const x = e.clientX - canvasRect.left;
+                const y = e.clientY - canvasRect.top;
+
+                // Check if over heatmap area
+                if (x < labelWidth || y < topPadding) {
+                    temporalTooltip.style.display = 'none';
+                    return;
+                }
+
+                // Calculate frame index
+                const colIdx = Math.floor((x - labelWidth) / cellWidth);
+                if (colIdx < 0 || colIdx >= temporalData.frames.length) {
+                    temporalTooltip.style.display = 'none';
+                    return;
+                }
+
+                const frame = temporalData.frames[colIdx];
+
+                // Build tooltip content
+                const timeStr = `${frame.time_start.toFixed(2)}s - ${frame.time_end.toFixed(2)}s`;
+                temporalTooltip.innerHTML = `
+                    <div class="temporal-heatmap-tooltip-header">${timeStr}</div>
+                    ${frame.classifications.slice(0, 6).map(c => `
+                        <div class="temporal-heatmap-tooltip-item">
+                            <span class="temporal-heatmap-tooltip-name">${c.name}</span>
+                            <span class="temporal-heatmap-tooltip-score">${(c.score * 100).toFixed(1)}%</span>
+                        </div>
+                    `).join('')}
+                `;
+
+                // Position tooltip
+                temporalTooltip.style.display = 'block';
+                temporalTooltip.style.left = (e.clientX + 15) + 'px';
+                temporalTooltip.style.top = (e.clientY - 10) + 'px';
+            };
+
+            canvas.onmouseleave = () => {
+                temporalTooltip.style.display = 'none';
+            };
+
+            // Click to seek
+            canvas.onclick = (e) => {
+                if (!mainWavesurfer || !temporalData) return;
+
+                const canvasRect = canvas.getBoundingClientRect();
+                const x = e.clientX - canvasRect.left;
+
+                if (x < labelWidth) return;
+
+                const colIdx = Math.floor((x - labelWidth) / cellWidth);
+                if (colIdx < 0 || colIdx >= temporalData.frames.length) return;
+
+                const frame = temporalData.frames[colIdx];
+                const duration = mainWavesurfer.getDuration();
+                const percent = frame.time_start / duration;
+                mainWavesurfer.seekTo(Math.max(0, Math.min(1, percent)));
+            };
+        }
+
+        function updateTemporalPlayhead(currentTime, duration) {
+            const playhead = document.getElementById('temporal-playhead');
+            const container = document.getElementById('temporal-heatmap-container');
+
+            if (!playhead || !container || !temporalData) return;
+
+            const rect = container.getBoundingClientRect();
+            const labelWidth = 85;
+            const heatmapWidth = rect.width - labelWidth;
+
+            const percent = currentTime / duration;
+            const xPos = labelWidth + (percent * heatmapWidth);
+
+            playhead.style.left = xPos + 'px';
+        }
+
+        function changeGranularity(value) {
+            if (!selectedFileId) return;
+
+            const granularity = parseFloat(value);
+            document.getElementById('temporal-info').textContent = 'Loading...';
+
+            loadTemporalClassifications(selectedFileId, granularity);
+        }
+
+        // Handle window resize
+        window.addEventListener('resize', () => {
+            if (temporalData) {
+                renderTemporalHeatmap();
+            }
+        });
 
         function renderAudioSepClassifications(classes, autoQueue = false) {
             const container = document.getElementById('audiosep-classifications');

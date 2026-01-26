@@ -466,6 +466,53 @@ async def get_job_status(job_id: str):
     return processing_jobs[job_id]
 
 
+@app.post("/api/classify-temporal/{file_id}")
+async def classify_temporal(
+    file_id: str,
+    top_k: int = 10,
+    granularity: float = 0.96,
+):
+    """
+    Classify audio temporally, returning per-frame classifications with timing.
+
+    Args:
+        file_id: ID of the uploaded audio file
+        top_k: Number of top categories per frame (default: 10)
+        granularity: Time resolution in seconds (0.48, 0.96, 1.92, 3.84)
+
+    Returns:
+        Temporal classification data with frames, categories, and timing metadata
+    """
+    if file_id not in audio_files:
+        raise HTTPException(404, "File not found")
+
+    # Validate granularity
+    valid_granularities = [0.48, 0.96, 1.92, 3.84]
+    if granularity not in valid_granularities:
+        raise HTTPException(400, f"Invalid granularity. Use: {valid_granularities}")
+
+    audio_file = audio_files[file_id]
+    file_path = PROJECT_ROOT / audio_file.path.lstrip("/")
+
+    try:
+        from src.classifier import YAMNetClassifier
+
+        classifier = YAMNetClassifier()
+        result = classifier.classify_temporal(
+            str(file_path),
+            top_k=top_k,
+            granularity=granularity,
+        )
+
+        return {
+            "file_id": file_id,
+            **result,
+        }
+
+    except Exception as e:
+        raise HTTPException(500, f"Temporal classification failed: {str(e)}")
+
+
 # ============================================================================
 # AudioSep Queue System
 # ============================================================================
