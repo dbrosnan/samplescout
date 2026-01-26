@@ -549,6 +549,68 @@
             opacity: 0.5;
         }
 
+        /* Sidebar Queue Panel Adjustments */
+        .sidebar .queue-panel {
+            border-radius: 12px;
+            padding: 1rem;
+            margin-bottom: 0;
+            margin-top: 0.75rem;
+        }
+
+        .sidebar .queue-header {
+            flex-direction: column;
+            align-items: flex-start;
+            gap: 0.75rem;
+            margin-bottom: 0.75rem;
+        }
+
+        .sidebar .queue-title {
+            font-size: 0.85rem;
+        }
+
+        .sidebar .queue-controls {
+            width: 100%;
+            justify-content: space-between;
+        }
+
+        .sidebar .queue-btn {
+            padding: 0.4rem 0.75rem;
+            font-size: 0.65rem;
+            flex: 1;
+        }
+
+        .sidebar .queue-items {
+            max-height: 180px;
+        }
+
+        .sidebar .queue-item {
+            padding: 0.5rem 0.6rem;
+            gap: 0.5rem;
+        }
+
+        .sidebar .queue-item-rank {
+            width: 20px;
+            height: 20px;
+            font-size: 0.6rem;
+        }
+
+        .sidebar .queue-item-name {
+            font-size: 0.75rem;
+        }
+
+        .sidebar .queue-item-meta {
+            font-size: 0.6rem;
+        }
+
+        .sidebar .queue-empty {
+            padding: 1rem;
+            font-size: 0.75rem;
+        }
+
+        .sidebar .queue-empty-icon {
+            font-size: 1.5rem;
+        }
+
         /* Player and YAMNet side-by-side layout */
         .player-classification-row {
             display: flex;
@@ -1595,6 +1657,42 @@
                     </div>
                 </div>
             </div>
+
+            <!-- ═══ AUDIO SEPARATION QUEUE ═══ -->
+            <div class="queue-panel" id="queue-panel" style="display: none;">
+                <div class="queue-header">
+                    <div class="queue-title">
+                        <span class="queue-title-icon">☔</span>
+                        Separation Queue
+                    </div>
+                    <div class="queue-controls">
+                        <button class="queue-btn pause-btn" id="queue-pause-btn" onclick="toggleQueuePause()">
+                            ⏸ Pause
+                        </button>
+                        <button class="queue-btn" onclick="clearQueue()">
+                            ✕ Clear
+                        </button>
+                    </div>
+                </div>
+
+                <div class="queue-progress-container">
+                    <div class="queue-progress-header">
+                        <span>Progress</span>
+                        <span class="queue-progress-stats" id="queue-stats">0 / 0</span>
+                    </div>
+                    <div class="queue-progress-bar">
+                        <div class="queue-progress-fill" id="queue-progress-fill" style="width: 0%"></div>
+                    </div>
+                </div>
+
+                <div class="queue-items" id="queue-items">
+                    <div class="queue-empty">
+                        <div class="queue-empty-icon">🎵</div>
+                        <div>Queue empty</div>
+                        <div style="font-size: 0.65rem; margin-top: 0.25rem;">Select a file to start</div>
+                    </div>
+                </div>
+            </div>
         </aside>
 
         <section class="content" id="content">
@@ -1711,42 +1809,6 @@
                             <div class="yamnet-progress-bar" id="yamnet-progress-bar"></div>
                         </div>
                         <div class="yamnet-progress-status" id="yamnet-status">Initializing YAMNet...</div>
-                    </div>
-                </div>
-
-                <!-- ═══ AUDIO SEPARATION QUEUE ═══ -->
-                <div class="queue-panel" id="queue-panel" style="display: none;">
-                    <div class="queue-header">
-                        <div class="queue-title">
-                            <span class="queue-title-icon">☔</span>
-                            Audio Separation Queue
-                        </div>
-                        <div class="queue-controls">
-                            <button class="queue-btn pause-btn" id="queue-pause-btn" onclick="toggleQueuePause()">
-                                ⏸ Pause
-                            </button>
-                            <button class="queue-btn" onclick="clearQueue()">
-                                ✕ Clear
-                            </button>
-                        </div>
-                    </div>
-
-                    <div class="queue-progress-container">
-                        <div class="queue-progress-header">
-                            <span>Overall Progress</span>
-                            <span class="queue-progress-stats" id="queue-stats">0 / 0 complete</span>
-                        </div>
-                        <div class="queue-progress-bar">
-                            <div class="queue-progress-fill" id="queue-progress-fill" style="width: 0%"></div>
-                        </div>
-                    </div>
-
-                    <div class="queue-items" id="queue-items">
-                        <div class="queue-empty">
-                            <div class="queue-empty-icon">🎵</div>
-                            <div>No items in queue</div>
-                            <div style="font-size: 0.7rem; margin-top: 0.25rem;">Classify audio to auto-queue separations</div>
-                        </div>
                     </div>
                 </div>
 
