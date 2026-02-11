@@ -57,6 +57,26 @@ pip install -e ".[dev]"
 
 ## Usage
 
+### Web Interface
+
+The easiest way to use SampleScout is through the web interface:
+
+```bash
+# Install web dependencies
+pip install -e ".[web]"
+
+# Start the web server
+python run_web.py
+```
+
+Open http://127.0.0.1:8000 in your browser. The web interface supports:
+
+- **File Upload** - Drag and drop audio files for analysis
+- **Live Recording** - Record directly from your microphone with real-time classification
+- **Audio Classification** - View YAMNet classification results with confidence scores
+- **Source Separation** - Queue files for separation with Demucs, Spleeter, or AudioSep
+- **Waveform Visualization** - Interactive waveforms with spectrogram views
+
 ### Command Line
 
 ```bash

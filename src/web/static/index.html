@@ -2164,7 +2164,7 @@
                 await new Promise((resolve, reject) => {
                     if (streamWs.readyState === WebSocket.OPEN) { resolve(); return; }
                     streamWs.addEventListener('open', resolve, { once: true });
-                    streamWs.addEventListener('error', reject, { once: true });
+                    streamWs.addEventListener('error', (evt) => { reject(new Error('WebSocket error event')); }, { once: true });
                 });
 
                 // 3. Send start command

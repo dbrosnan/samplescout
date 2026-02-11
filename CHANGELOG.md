@@ -20,6 +20,10 @@ and this project adheres to [Semantic Versioning](https://semver.org/spec/v2.0.0
 - GitHub Actions CI/CD pipeline
 - Docker support
 - Documentation
+- Web interface with FastAPI backend
+- Live microphone recording with real-time classification
+- WebSocket streaming for audio capture
+- Input mode switcher (Upload vs Record)
 
 ### Changed
 - N/A
@@ -31,7 +35,7 @@ and this project adheres to [Semantic Versioning](https://semver.org/spec/v2.0.0
 - N/A
 
 ### Fixed
-- N/A
+- WebSocket support now requires `websockets` library (added to `[web]` optional dependencies)
 
 ### Security
 - N/A

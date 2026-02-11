@@ -73,6 +73,12 @@ audiosep = [
     "transformers>=4.30.0",
     "accelerate>=0.20.0",
 ]
+web = [
+    "fastapi>=0.100.0",
+    "uvicorn>=0.22.0",
+    "websockets>=11.0",
+    "python-multipart>=0.0.6",
+]
 
 [project.scripts]
 samplescout = "samplescout.cli:main"
