@@ -14,7 +14,7 @@ import numpy as np
 import tensorflow as tf
 import tensorflow_hub as hub
 
-from src.utils import load_audio
+from src.utils import load_audio, resample, to_mono
 
 
 @dataclass
@@ -132,6 +132,72 @@ class YAMNetClassifier:
         mean_embedding = np.mean(embeddings_np, axis=0)
 
         # Get top classes
+        top_indices = np.argsort(mean_scores)[::-1][:top_k]
+        top_classes = [
+            (self.class_names[idx], float(mean_scores[idx]))
+            for idx in top_indices
+            if mean_scores[idx] >= min_score
+        ]
+
+        processing_time = time.time() - start_time
+
+        return ClassificationResult(
+            scores=scores_np,
+            embeddings=embeddings_np,
+            top_classes=top_classes,
+            embedding=mean_embedding,
+            processing_time=processing_time,
+            spectrogram=spectrogram_np,
+            all_classes=self.class_names,
+        )
+
+    def classify_waveform(
+        self,
+        waveform: np.ndarray,
+        sr: int,
+        top_k: int = 10,
+        min_score: float = 0.1,
+    ) -> ClassificationResult:
+        """
+        Classify audio waveform (numpy array) into sound categories.
+
+        Accepts raw waveform for streaming or in-memory audio. Resamples to 16kHz
+        if needed (YAMNet requirement).
+
+        Args:
+            waveform: Audio waveform as float32 array, shape (N,) or (N, C)
+            sr: Sample rate of the waveform
+            top_k: Number of top classes to return
+            min_score: Minimum score threshold for results
+
+        Returns:
+            ClassificationResult with scores, embeddings, and top classes
+        """
+        start_time = time.time()
+
+        # Ensure mono and float32
+        waveform = to_mono(waveform).astype(np.float32)
+
+        # Resample to YAMNet's expected sample rate
+        if sr != self.SAMPLE_RATE:
+            waveform = resample(waveform, sr, self.SAMPLE_RATE)
+
+        # Normalize to [-1, 1] if needed
+        if np.abs(waveform).max() > 1.0:
+            waveform = waveform / np.abs(waveform).max()
+
+        tensor = tf.constant(waveform)
+
+        # Run inference
+        scores, embeddings, spectrogram = self.model(tensor)
+
+        scores_np = scores.numpy()
+        embeddings_np = embeddings.numpy()
+        spectrogram_np = spectrogram.numpy()
+
+        mean_scores = np.mean(scores_np, axis=0)
+        mean_embedding = np.mean(embeddings_np, axis=0)
+
         top_indices = np.argsort(mean_scores)[::-1][:top_k]
         top_classes = [
             (self.class_names[idx], float(mean_scores[idx]))

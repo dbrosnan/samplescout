@@ -56,6 +56,28 @@ class TestYAMNetClassifier:
 
         assert result is not None
 
+    def test_classify_waveform(self, classifier, test_audio):
+        """Test classify_waveform accepts numpy array."""
+        from src.classifier import ClassificationResult
+        from src.utils import load_audio
+
+        waveform, sr = load_audio(test_audio, sr=16000, mono=True)
+        result = classifier.classify_waveform(waveform, sr, top_k=5)
+
+        assert isinstance(result, ClassificationResult)
+        assert len(result.top_classes) <= 5
+        assert result.embedding.shape == (1024,)
+
+    def test_classify_waveform_resample(self, classifier):
+        """Test classify_waveform resamples from different sample rate."""
+        from src.classifier import ClassificationResult
+
+        # 1 second of silence at 48kHz
+        waveform = np.zeros(48000, dtype=np.float32)
+        result = classifier.classify_waveform(waveform, sr=48000, top_k=3)
+
+        assert isinstance(result, ClassificationResult)
+
 
 class TestClassificationResult:
     """Tests for ClassificationResult dataclass."""

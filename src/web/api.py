@@ -17,7 +17,7 @@ from typing import Dict, List, Optional
 # Note: Separation runs in subprocess to avoid torch import conflicts
 
 import numpy as np
-from fastapi import FastAPI, File, HTTPException, UploadFile, BackgroundTasks
+from fastapi import FastAPI, File, HTTPException, UploadFile, BackgroundTasks, WebSocket, WebSocketDisconnect
 from fastapi.middleware.cors import CORSMiddleware
 from fastapi.responses import FileResponse, JSONResponse
 from fastapi.staticfiles import StaticFiles
@@ -160,6 +160,148 @@ async def root():
 async def health():
     """Health check endpoint."""
     return {"status": "healthy", "timestamp": datetime.now().isoformat()}
+
+
+# ============================================================================
+# WebSocket Streaming (microphone recording)
+# ============================================================================
+
+# Minimum samples for classification (~1s at 16kHz)
+STREAM_CLASSIFY_MIN_SAMPLES = 16000
+
+
+async def _run_classify_waveform(waveform: np.ndarray, sr: int, top_k: int = 5):
+    """Run classifier in thread pool to avoid blocking."""
+    loop = asyncio.get_event_loop()
+    return await loop.run_in_executor(
+        None,
+        lambda: _classify_waveform_sync(waveform, sr, top_k),
+    )
+
+
+def _classify_waveform_sync(waveform: np.ndarray, sr: int, top_k: int = 5):
+    """Synchronous classification for executor."""
+    from src.classifier import YAMNetClassifier
+
+    classifier = YAMNetClassifier()
+    result = classifier.classify_waveform(waveform, sr, top_k=top_k)
+    return result.top_classes
+
+
+@app.websocket("/ws/stream")
+async def websocket_stream(websocket: WebSocket):
+    """
+    WebSocket for streaming microphone audio.
+
+    Protocol:
+    - Client sends {"action": "start", "sample_rate": 16000} to begin
+    - Client sends binary PCM (float32 little-endian mono) chunks
+    - Server runs classification when >= 1s accumulated; sends {"type": "classification", ...}
+    - Client sends {"action": "stop", "save": true} to stop and save recording
+    - Server sends {"type": "saved", "file": {...}} with AudioFile
+    """
+    await websocket.accept()
+
+    buffer: List[float] = []
+    sample_rate = 16000
+    recording_started = False
+
+    try:
+        while True:
+            try:
+                data = await websocket.receive()
+            except WebSocketDisconnect:
+                break
+
+            # Handle binary (PCM chunks)
+            if "bytes" in data and data["bytes"]:
+                if not recording_started:
+                    continue
+                chunk = np.frombuffer(data["bytes"], dtype=np.float32)
+                buffer.extend(chunk.tolist())
+
+                # Classify when we have >= 1s
+                if len(buffer) >= STREAM_CLASSIFY_MIN_SAMPLES:
+                    waveform = np.array(buffer[-STREAM_CLASSIFY_MIN_SAMPLES:], dtype=np.float32)
+                    try:
+                        top_classes = await _run_classify_waveform(waveform, sample_rate, top_k=5)
+                        await websocket.send_json({
+                            "type": "classification",
+                            "top_classes": [{"name": n, "score": s} for n, s in top_classes],
+                            "timestamp": len(buffer) / sample_rate,
+                        })
+                    except Exception as e:
+                        await websocket.send_json({"type": "error", "message": str(e)})
+
+            # Handle text (JSON control)
+            elif "text" in data:
+                try:
+                    msg = json.loads(data["text"])
+                except json.JSONDecodeError:
+                    continue
+
+                action = msg.get("action")
+                if action == "start":
+                    recording_started = True
+                    buffer.clear()
+                    sample_rate = int(msg.get("sample_rate", 16000))
+                    await websocket.send_json({"type": "started", "sample_rate": sample_rate})
+
+                elif action == "stop":
+                    save = msg.get("save", False)
+                    recording_started = False
+
+                    if save and len(buffer) > 0:
+                        # Save recording to uploads
+                        file_id = str(uuid.uuid4())[:8]
+                        waveform = np.array(buffer, dtype=np.float32)
+                        filename = f"{file_id}_recording.wav"
+                        file_path = UPLOAD_DIR / filename
+
+                        loop = asyncio.get_event_loop()
+                        await loop.run_in_executor(
+                            None,
+                            lambda: _save_recording(waveform, sample_rate, file_path),
+                        )
+
+                        info = get_audio_info(file_path)
+                        size = file_path.stat().st_size
+
+                        audio_file = AudioFile(
+                            id=file_id,
+                            filename=f"recording_{datetime.now().strftime('%Y%m%d_%H%M%S')}.wav",
+                            path=f"/uploads/{filename}",
+                            size=size,
+                            duration=info.get("duration"),
+                            sample_rate=info.get("sample_rate"),
+                            uploaded_at=datetime.now().isoformat(),
+                        )
+                        audio_files[file_id] = audio_file
+
+                        await websocket.send_json({
+                            "type": "saved",
+                            "file": audio_file.model_dump(),
+                        })
+                    else:
+                        await websocket.send_json({"type": "stopped"})
+
+    except Exception as e:
+        try:
+            await websocket.send_json({"type": "error", "message": str(e)})
+        except Exception:
+            pass
+    finally:
+        try:
+            await websocket.close()
+        except Exception:
+            pass
+
+
+def _save_recording(waveform: np.ndarray, sr: int, path: Path):
+    """Save waveform to WAV file."""
+    from src.utils import save_audio
+
+    save_audio(path, waveform, sr, normalize=True)
 
 
 @app.get("/api/files")

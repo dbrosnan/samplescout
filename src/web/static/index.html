@@ -186,6 +186,69 @@
         .upload-text strong { color: var(--accent-blue); }
         #file-input { display: none; }
 
+        /* Input mode switcher (Upload | Record) */
+        .input-mode-tabs {
+            display: flex;
+            gap: 0;
+            margin-bottom: 1rem;
+            background: var(--bg-secondary);
+            border-radius: 10px;
+            padding: 4px;
+            border: 1px solid var(--border-color);
+        }
+        .input-mode-tab {
+            flex: 1;
+            padding: 0.5rem 1rem;
+            border: none;
+            background: transparent;
+            color: var(--text-secondary);
+            font-size: 0.875rem;
+            cursor: pointer;
+            border-radius: 8px;
+            transition: all 0.2s ease;
+        }
+        .input-mode-tab:hover { color: var(--text-primary); }
+        .input-mode-tab.active {
+            background: var(--prince-purple);
+            color: white;
+        }
+        .input-mode-panel { display: none; }
+        .input-mode-panel.active { display: block; }
+        .record-panel {
+            padding: 1rem 0;
+            text-align: center;
+        }
+        .record-btn {
+            padding: 0.75rem 1.5rem;
+            border-radius: 12px;
+            border: none;
+            font-size: 1rem;
+            cursor: pointer;
+            transition: all 0.2s ease;
+        }
+        .record-btn.start {
+            background: var(--accent-red);
+            color: white;
+        }
+        .record-btn.start:hover { background: #dc2626; }
+        .record-btn.stop {
+            background: var(--prince-gold);
+            color: var(--bg-primary);
+        }
+        .record-btn.stop:hover { background: var(--prince-gold-light); }
+        .record-timer {
+            font-size: 1.5rem;
+            font-family: monospace;
+            margin: 0.75rem 0;
+            color: var(--prince-gold);
+        }
+        .record-live-labels {
+            font-size: 0.75rem;
+            color: var(--text-muted);
+            margin-top: 0.5rem;
+            min-height: 1.5rem;
+        }
+
         .file-list {
             display: flex;
             flex-direction: column;
@@ -1715,14 +1778,28 @@
             <div class="card">
                 <div class="card-header">
                     <div>
-                        <div class="card-title">Upload Audio</div>
-                        <div class="card-subtitle">WAV, MP3, FLAC, OGG supported</div>
+                        <div class="card-title">Add Audio</div>
+                        <div class="card-subtitle">Upload files or record from microphone</div>
                     </div>
                 </div>
-                <div class="upload-zone" id="upload-zone">
-                    <div class="upload-icon">📁</div>
-                    <div class="upload-text">Drop files here or <strong>browse</strong></div>
-                    <input type="file" id="file-input" accept=".wav,.mp3,.flac,.ogg,.m4a" multiple>
+                <div class="input-mode-tabs">
+                    <button class="input-mode-tab active" id="tab-upload" onclick="setInputMode('upload')">📁 Upload</button>
+                    <button class="input-mode-tab" id="tab-record" onclick="setInputMode('record')">🎤 Record</button>
+                </div>
+                <div class="input-mode-panel active" id="panel-upload">
+                    <div class="upload-zone" id="upload-zone">
+                        <div class="upload-icon">📁</div>
+                        <div class="upload-text">Drop files here or <strong>browse</strong></div>
+                        <input type="file" id="file-input" accept=".wav,.mp3,.flac,.ogg,.m4a" multiple>
+                    </div>
+                </div>
+                <div class="input-mode-panel" id="panel-record">
+                    <div class="record-panel">
+                        <button class="record-btn start" id="record-start-btn" onclick="startRecording()">● Start Recording</button>
+                        <button class="record-btn stop" id="record-stop-btn" onclick="stopRecording()" style="display: none;">■ Stop & Save</button>
+                        <div class="record-timer" id="record-timer" style="display: none;">0:00</div>
+                        <div class="record-live-labels" id="record-live-labels"></div>
+                    </div>
                 </div>
             </div>
 
@@ -2018,10 +2095,132 @@
         let queueItems = [];  // Local copy of queue items (pending)
         let allQueueItems = [];  // All queue items including completed
 
+        // ═══════════════════════════════════════════════════════════════════
+        // INPUT MODE: Upload | Record
+        // ═══════════════════════════════════════════════════════════════════
+        let inputMode = 'upload';
+        let isRecording = false;
+        let streamWs = null;
+        let audioContext = null;
+        let mediaStream = null;
+        let recordStartTime = null;
+        let recordTimerInterval = null;
+
+        function setInputMode(mode) {
+            if (isRecording && mode === 'upload') {
+                stopRecording().then(() => { inputMode = 'upload'; updateInputModeUI(); });
+                return;
+            }
+            inputMode = mode;
+            updateInputModeUI();
+        }
+
+        function updateInputModeUI() {
+            document.getElementById('tab-upload').classList.toggle('active', inputMode === 'upload');
+            document.getElementById('tab-record').classList.toggle('active', inputMode === 'record');
+            document.getElementById('panel-upload').classList.toggle('active', inputMode === 'upload');
+            document.getElementById('panel-record').classList.toggle('active', inputMode === 'record');
+        }
+
+        function getWsUrl() {
+            const proto = window.location.protocol === 'https:' ? 'wss:' : 'ws:';
+            return `${proto}//${window.location.host}/ws/stream`;
+        }
+
+        async function startRecording() {
+            if (isRecording) return;
+            try {
+                mediaStream = await navigator.mediaDevices.getUserMedia({ audio: true });
+                audioContext = new (window.AudioContext || window.webkitAudioContext)();
+                const sampleRate = audioContext.sampleRate;
+
+                const source = audioContext.createMediaStreamSource(mediaStream);
+                const bufferSize = 4096;
+                const processor = audioContext.createScriptProcessor(bufferSize, 1, 1);
+                let pcmBuffer = [];
+
+                processor.onaudioprocess = (e) => {
+                    if (!streamWs || streamWs.readyState !== WebSocket.OPEN) return;
+                    const input = e.inputBuffer.getChannelData(0);
+                    for (let i = 0; i < input.length; i++) pcmBuffer.push(input[i]);
+                    if (pcmBuffer.length >= sampleRate) {
+                        const chunk = new Float32Array(pcmBuffer.splice(0, sampleRate));
+                        streamWs.send(chunk.buffer);
+                    }
+                };
+                source.connect(processor);
+                processor.connect(audioContext.destination);
+
+                streamWs = new WebSocket(getWsUrl());
+                streamWs.onopen = () => {
+                    streamWs.send(JSON.stringify({ action: 'start', sample_rate: sampleRate }));
+                };
+                streamWs.onmessage = (e) => {
+                    try {
+                        const msg = JSON.parse(e.data);
+                        if (msg.type === 'classification') {
+                            const labels = (msg.top_classes || []).slice(0, 3).map(c => `${c.name} (${(c.score * 100).toFixed(0)}%)`).join(' · ');
+                            document.getElementById('record-live-labels').textContent = labels || 'Listening...';
+                        } else if (msg.type === 'saved') {
+                            files[msg.file.id] = msg.file;
+                            renderFileList();
+                            selectFile(msg.file.id);
+                        }
+                    } catch (_) {}
+                };
+
+                await new Promise((resolve, reject) => {
+                    if (streamWs.readyState === WebSocket.OPEN) resolve();
+                    else streamWs.onopen = resolve;
+                    streamWs.onerror = reject;
+                });
+
+                isRecording = true;
+                recordStartTime = Date.now();
+                document.getElementById('record-start-btn').style.display = 'none';
+                document.getElementById('record-stop-btn').style.display = 'inline-block';
+                document.getElementById('record-timer').style.display = 'block';
+                document.getElementById('record-live-labels').textContent = 'Starting...';
+
+                recordTimerInterval = setInterval(() => {
+                    const elapsed = Math.floor((Date.now() - recordStartTime) / 1000);
+                    const m = Math.floor(elapsed / 60);
+                    const s = elapsed % 60;
+                    document.getElementById('record-timer').textContent = `${m}:${s.toString().padStart(2, '0')}`;
+                }, 200);
+            } catch (err) {
+                console.error('Recording error:', err);
+                alert('Could not start recording. Please allow microphone access.');
+            }
+        }
+
+        async function stopRecording() {
+            if (!isRecording) return;
+            isRecording = false;
+            clearInterval(recordTimerInterval);
+            recordTimerInterval = null;
+            document.getElementById('record-start-btn').style.display = 'inline-block';
+            document.getElementById('record-stop-btn').style.display = 'none';
+            document.getElementById('record-timer').style.display = 'none';
+            document.getElementById('record-live-labels').textContent = '';
+
+            if (streamWs && streamWs.readyState === WebSocket.OPEN) {
+                streamWs.send(JSON.stringify({ action: 'stop', save: true }));
+            }
+            if (audioContext) {
+                await audioContext.close();
+                audioContext = null;
+            }
+            if (mediaStream) {
+                mediaStream.getTracks().forEach(t => t.stop());
+                mediaStream = null;
+            }
+            streamWs = null;
+        }
+
         document.addEventListener('DOMContentLoaded', () => {
             loadFiles();
             setupUpload();
-            // Start queue polling
             startQueuePolling();
         });
 
