@@ -2105,6 +2105,8 @@
         let mediaStream = null;
         let recordStartTime = null;
         let recordTimerInterval = null;
+        let recordingSampleRate = 48000;
+        let pcmBuffer = [];            // shared so stopRecording can flush it
 
         function setInputMode(mode) {
             if (isRecording && mode === 'upload') {
@@ -2130,37 +2132,26 @@
         async function startRecording() {
             if (isRecording) return;
             try {
+                // 1. Get microphone
                 mediaStream = await navigator.mediaDevices.getUserMedia({ audio: true });
                 audioContext = new (window.AudioContext || window.webkitAudioContext)();
-                const sampleRate = audioContext.sampleRate;
+                recordingSampleRate = audioContext.sampleRate;
+                pcmBuffer = [];
 
-                const source = audioContext.createMediaStreamSource(mediaStream);
-                const bufferSize = 4096;
-                const processor = audioContext.createScriptProcessor(bufferSize, 1, 1);
-                let pcmBuffer = [];
-
-                processor.onaudioprocess = (e) => {
-                    if (!streamWs || streamWs.readyState !== WebSocket.OPEN) return;
-                    const input = e.inputBuffer.getChannelData(0);
-                    for (let i = 0; i < input.length; i++) pcmBuffer.push(input[i]);
-                    if (pcmBuffer.length >= sampleRate) {
-                        const chunk = new Float32Array(pcmBuffer.splice(0, sampleRate));
-                        streamWs.send(chunk.buffer);
-                    }
-                };
-                source.connect(processor);
-                processor.connect(audioContext.destination);
-
+                // 2. Connect WebSocket and wait for it to open
                 streamWs = new WebSocket(getWsUrl());
-                streamWs.onopen = () => {
-                    streamWs.send(JSON.stringify({ action: 'start', sample_rate: sampleRate }));
-                };
+                streamWs.binaryType = 'arraybuffer';
+
+                // Message handler (lives for the lifetime of the connection)
                 streamWs.onmessage = (e) => {
                     try {
                         const msg = JSON.parse(e.data);
                         if (msg.type === 'classification') {
-                            const labels = (msg.top_classes || []).slice(0, 3).map(c => `${c.name} (${(c.score * 100).toFixed(0)}%)`).join(' · ');
-                            document.getElementById('record-live-labels').textContent = labels || 'Listening...';
+                            const labels = (msg.top_classes || []).slice(0, 3)
+                                .map(c => `${c.name} (${(c.score * 100).toFixed(0)}%)`)
+                                .join(' · ');
+                            const el = document.getElementById('record-live-labels');
+                            if (el) el.textContent = labels || 'Listening...';
                         } else if (msg.type === 'saved') {
                             files[msg.file.id] = msg.file;
                             renderFileList();
@@ -2169,18 +2160,40 @@
                     } catch (_) {}
                 };
 
+                // Wait for WebSocket to be open
                 await new Promise((resolve, reject) => {
-                    if (streamWs.readyState === WebSocket.OPEN) resolve();
-                    else streamWs.onopen = resolve;
-                    streamWs.onerror = reject;
+                    if (streamWs.readyState === WebSocket.OPEN) { resolve(); return; }
+                    streamWs.addEventListener('open', resolve, { once: true });
+                    streamWs.addEventListener('error', reject, { once: true });
                 });
 
+                // 3. Send start command
+                streamWs.send(JSON.stringify({ action: 'start', sample_rate: recordingSampleRate }));
+
+                // 4. Wire up audio capture via ScriptProcessor
+                const source = audioContext.createMediaStreamSource(mediaStream);
+                const processor = audioContext.createScriptProcessor(4096, 1, 1);
+
+                processor.onaudioprocess = (e) => {
+                    if (!streamWs || streamWs.readyState !== WebSocket.OPEN) return;
+                    const input = e.inputBuffer.getChannelData(0);
+                    for (let i = 0; i < input.length; i++) pcmBuffer.push(input[i]);
+                    // Flush ~1 second chunks to server
+                    if (pcmBuffer.length >= recordingSampleRate) {
+                        const chunk = new Float32Array(pcmBuffer.splice(0, recordingSampleRate));
+                        streamWs.send(chunk.buffer);
+                    }
+                };
+                source.connect(processor);
+                processor.connect(audioContext.destination);
+
+                // 5. Update UI state
                 isRecording = true;
                 recordStartTime = Date.now();
                 document.getElementById('record-start-btn').style.display = 'none';
                 document.getElementById('record-stop-btn').style.display = 'inline-block';
                 document.getElementById('record-timer').style.display = 'block';
-                document.getElementById('record-live-labels').textContent = 'Starting...';
+                document.getElementById('record-live-labels').textContent = 'Listening...';
 
                 recordTimerInterval = setInterval(() => {
                     const elapsed = Math.floor((Date.now() - recordStartTime) / 1000);
@@ -2190,6 +2203,10 @@
                 }, 200);
             } catch (err) {
                 console.error('Recording error:', err);
+                // Clean up partial state
+                if (audioContext) { try { await audioContext.close(); } catch(_){} audioContext = null; }
+                if (mediaStream) { mediaStream.getTracks().forEach(t => t.stop()); mediaStream = null; }
+                if (streamWs) { try { streamWs.close(); } catch(_){} streamWs = null; }
                 alert('Could not start recording. Please allow microphone access.');
             }
         }
@@ -2199,23 +2216,55 @@
             isRecording = false;
             clearInterval(recordTimerInterval);
             recordTimerInterval = null;
+
+            // Update UI immediately
             document.getElementById('record-start-btn').style.display = 'inline-block';
             document.getElementById('record-stop-btn').style.display = 'none';
             document.getElementById('record-timer').style.display = 'none';
-            document.getElementById('record-live-labels').textContent = '';
+            document.getElementById('record-live-labels').textContent = 'Saving...';
 
-            if (streamWs && streamWs.readyState === WebSocket.OPEN) {
-                streamWs.send(JSON.stringify({ action: 'stop', save: true }));
+            // Flush any remaining PCM buffer to the server
+            if (streamWs && streamWs.readyState === WebSocket.OPEN && pcmBuffer.length > 0) {
+                const remaining = new Float32Array(pcmBuffer);
+                pcmBuffer = [];
+                streamWs.send(remaining.buffer);
             }
+
+            // Stop audio capture (this stops the onaudioprocess callback)
             if (audioContext) {
-                await audioContext.close();
+                try { await audioContext.close(); } catch(_) {}
                 audioContext = null;
             }
             if (mediaStream) {
                 mediaStream.getTracks().forEach(t => t.stop());
                 mediaStream = null;
             }
-            streamWs = null;
+
+            // Send stop command and wait for the saved response before closing WS
+            if (streamWs && streamWs.readyState === WebSocket.OPEN) {
+                try {
+                    await new Promise((resolve) => {
+                        const origHandler = streamWs.onmessage;
+                        const timeout = setTimeout(resolve, 5000); // safety timeout
+                        streamWs.onmessage = (e) => {
+                            // Let existing handler process it (for saved → file list)
+                            if (origHandler) origHandler(e);
+                            try {
+                                const msg = JSON.parse(e.data);
+                                if (msg.type === 'saved' || msg.type === 'stopped') {
+                                    clearTimeout(timeout);
+                                    resolve();
+                                }
+                            } catch(_) {}
+                        };
+                        streamWs.send(JSON.stringify({ action: 'stop', save: true }));
+                    });
+                } catch(_) {}
+            }
+
+            // Now safe to close
+            if (streamWs) { try { streamWs.close(); } catch(_) {} streamWs = null; }
+            document.getElementById('record-live-labels').textContent = '';
         }
 
         document.addEventListener('DOMContentLoaded', () => {

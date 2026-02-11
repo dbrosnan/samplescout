@@ -166,12 +166,21 @@ async def health():
 # WebSocket Streaming (microphone recording)
 # ============================================================================
 
-# Minimum samples for classification (~1s at 16kHz)
-STREAM_CLASSIFY_MIN_SAMPLES = 16000
+# Cached classifier singleton (lazy-loaded, thread-safe via GIL)
+_stream_classifier = None
+
+
+def _get_stream_classifier():
+    """Return a cached YAMNetClassifier singleton for streaming."""
+    global _stream_classifier
+    if _stream_classifier is None:
+        from src.classifier import YAMNetClassifier
+        _stream_classifier = YAMNetClassifier()
+    return _stream_classifier
 
 
 async def _run_classify_waveform(waveform: np.ndarray, sr: int, top_k: int = 5):
-    """Run classifier in thread pool to avoid blocking."""
+    """Run classifier in thread pool to avoid blocking the event loop."""
     loop = asyncio.get_event_loop()
     return await loop.run_in_executor(
         None,
@@ -180,10 +189,8 @@ async def _run_classify_waveform(waveform: np.ndarray, sr: int, top_k: int = 5):
 
 
 def _classify_waveform_sync(waveform: np.ndarray, sr: int, top_k: int = 5):
-    """Synchronous classification for executor."""
-    from src.classifier import YAMNetClassifier
-
-    classifier = YAMNetClassifier()
+    """Synchronous classification using cached classifier."""
+    classifier = _get_stream_classifier()
     result = classifier.classify_waveform(waveform, sr, top_k=top_k)
     return result.top_classes
 
@@ -194,15 +201,18 @@ async def websocket_stream(websocket: WebSocket):
     WebSocket for streaming microphone audio.
 
     Protocol:
-    - Client sends {"action": "start", "sample_rate": 16000} to begin
+    - Client sends {"action": "start", "sample_rate": N} to begin session
     - Client sends binary PCM (float32 little-endian mono) chunks
-    - Server runs classification when >= 1s accumulated; sends {"type": "classification", ...}
-    - Client sends {"action": "stop", "save": true} to stop and save recording
-    - Server sends {"type": "saved", "file": {...}} with AudioFile
+    - Server classifies the latest ~1s every time 1s of new audio arrives
+    - Client sends {"action": "stop", "save": true} to stop and save
+    - Server sends {"type": "saved", "file": {...}} with AudioFile model
     """
     await websocket.accept()
 
-    buffer: List[float] = []
+    # Per-connection state
+    chunks: List[np.ndarray] = []       # list of numpy chunks (efficient append)
+    total_samples = 0                    # running count
+    last_classify_at = 0                 # sample position of last classification
     sample_rate = 16000
     recording_started = False
 
@@ -213,37 +223,44 @@ async def websocket_stream(websocket: WebSocket):
             except WebSocketDisconnect:
                 break
 
-            # Handle binary (PCM chunks)
+            # ── Binary: PCM audio chunk ──
             if "bytes" in data and data["bytes"]:
                 if not recording_started:
                     continue
-                chunk = np.frombuffer(data["bytes"], dtype=np.float32)
-                buffer.extend(chunk.tolist())
+                chunk = np.frombuffer(data["bytes"], dtype=np.float32).copy()
+                chunks.append(chunk)
+                total_samples += len(chunk)
 
-                # Classify when we have >= 1s
-                if len(buffer) >= STREAM_CLASSIFY_MIN_SAMPLES:
-                    waveform = np.array(buffer[-STREAM_CLASSIFY_MIN_SAMPLES:], dtype=np.float32)
+                # Classify only when >= 1 second of NEW audio since last run
+                min_samples = sample_rate  # 1 second at native rate
+                if total_samples - last_classify_at >= min_samples and total_samples >= min_samples:
+                    # Take the latest ~1s from the buffer tail
+                    tail = _concat_tail(chunks, min_samples)
+                    last_classify_at = total_samples
                     try:
-                        top_classes = await _run_classify_waveform(waveform, sample_rate, top_k=5)
+                        top_classes = await _run_classify_waveform(tail, sample_rate, top_k=5)
                         await websocket.send_json({
                             "type": "classification",
                             "top_classes": [{"name": n, "score": s} for n, s in top_classes],
-                            "timestamp": len(buffer) / sample_rate,
+                            "timestamp": round(total_samples / sample_rate, 2),
                         })
                     except Exception as e:
                         await websocket.send_json({"type": "error", "message": str(e)})
 
-            # Handle text (JSON control)
-            elif "text" in data:
+            # ── Text: JSON control messages ──
+            elif "text" in data and data["text"]:
                 try:
                     msg = json.loads(data["text"])
                 except json.JSONDecodeError:
                     continue
 
                 action = msg.get("action")
+
                 if action == "start":
                     recording_started = True
-                    buffer.clear()
+                    chunks.clear()
+                    total_samples = 0
+                    last_classify_at = 0
                     sample_rate = int(msg.get("sample_rate", 16000))
                     await websocket.send_json({"type": "started", "sample_rate": sample_rate})
 
@@ -251,17 +268,19 @@ async def websocket_stream(websocket: WebSocket):
                     save = msg.get("save", False)
                     recording_started = False
 
-                    if save and len(buffer) > 0:
-                        # Save recording to uploads
+                    if save and total_samples > 0:
+                        waveform = np.concatenate(chunks) if chunks else np.array([], dtype=np.float32)
                         file_id = str(uuid.uuid4())[:8]
-                        waveform = np.array(buffer, dtype=np.float32)
                         filename = f"{file_id}_recording.wav"
                         file_path = UPLOAD_DIR / filename
 
-                        loop = asyncio.get_event_loop()
-                        await loop.run_in_executor(
+                        # Save in thread pool to avoid blocking
+                        _sr = sample_rate
+                        _fp = file_path
+                        _wf = waveform
+                        await asyncio.get_event_loop().run_in_executor(
                             None,
-                            lambda: _save_recording(waveform, sample_rate, file_path),
+                            lambda: _save_recording(_wf, _sr, _fp),
                         )
 
                         info = get_audio_info(file_path)
@@ -285,6 +304,11 @@ async def websocket_stream(websocket: WebSocket):
                     else:
                         await websocket.send_json({"type": "stopped"})
 
+                    # Clear buffer after stop
+                    chunks.clear()
+                    total_samples = 0
+                    last_classify_at = 0
+
     except Exception as e:
         try:
             await websocket.send_json({"type": "error", "message": str(e)})
@@ -297,10 +321,26 @@ async def websocket_stream(websocket: WebSocket):
             pass
 
 
+def _concat_tail(chunks: List[np.ndarray], n_samples: int) -> np.ndarray:
+    """Efficiently extract the last n_samples from a list of numpy chunks."""
+    collected = []
+    remaining = n_samples
+    for chunk in reversed(chunks):
+        if remaining <= 0:
+            break
+        if len(chunk) <= remaining:
+            collected.append(chunk)
+            remaining -= len(chunk)
+        else:
+            collected.append(chunk[-remaining:])
+            remaining = 0
+    collected.reverse()
+    return np.concatenate(collected) if collected else np.array([], dtype=np.float32)
+
+
 def _save_recording(waveform: np.ndarray, sr: int, path: Path):
     """Save waveform to WAV file."""
     from src.utils import save_audio
-
     save_audio(path, waveform, sr, normalize=True)
 
 
